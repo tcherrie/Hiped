@@ -1,5 +1,10 @@
 # Hierarchical Interpolation with Projection, Evaluation and Derivation
 
+[![GitHub license](https://img.shields.io/github/license/tcherrie/Hiped)](https://github.com/tcherrie/Hiped) [![GitHub release](https://img.shields.io/github/release/tcherrie/Hiped.svg)](https://github.com/tcherrie/Hiped/releases/) [![GitHub stars](https://img.shields.io/github/stars/tcherrie/Hiped)](https://github.com/tcherrie/Hiped/stargazers)
+[![DOI](https://zenodo.org/badge/763998095.svg)](https://zenodo.org/doi/10.5281/zenodo.10718117)
+
+
+
 The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection and derivation) that can be used for instance in multimaterial topology optimization algorithms [^1][^2] as well as in other applications using projected gradient descent.
 
 This code is a major upgrade of [^3], based itself on [^4].
@@ -8,7 +13,7 @@ This code is a major upgrade of [^3], based itself on [^4].
 ## Quickstart
 
 
-Start by running the example files in the folder "examples". If your Matlab version supports it, you can run the LiveScripts (in "examples/notebooks"), or traditional .m files (in "examples/mfiles"), in the alphabetical order.
+Start by running the example files in the folder "examples". If your Matlab version supports it, you can run the LiveScripts (in "examples/notebooks"), or traditional .m files (in "examples/mfiles"), in alphabetical order.
 
 **NB** : The code has been tested with success on Matlab R2023a.
 
@@ -71,13 +76,22 @@ The routines computing the evaluation of the interpolation, the derivatives, and
 
 Please use the following citation reference if you use the code:
 
-    T. Cherrière tcherrie/hiped: Hiped (v1.0.1), March 2024. Zenodo.
+    T. Cherrière. tcherrie/Hiped: Hierarchical Interpolation with Projection, Evaluation and Derivation (v1.0.1), February 2024. Zenodo. https://doi.org/10.5281/zenodo.10718117
 
-Bibtex entry :
+Bibtex entry:
 
+    @software{tcherrie_2024_10718117,
+    author       = {Cherrière, Théodore},
+    title        = {tcherrie/Hiped: Hierarchical Interpolation with Projection, Evaluation and Derivation},
+    month        = feb,
+    year         = 2024,
+    publisher    = {Zenodo},
+    version      = {v1.0.1},
+    doi          = {10.5281/zenodo.10718117},
+    url          = {https://doi.org/10.5281/zenodo.10718117}
+    }
 
-
-**NB: version number and DOI must be adapted from [Zenodo's repository.](XXX)** 
+**NB: version number and DOI must be adapted from [Zenodo's repository](https://doi.org/10.5281/zenodo.10718117)**, according to the version used.
 
 ## License
 
@@ -98,11 +112,10 @@ Structural and Multidisciplinary Optimization, 65(352).
 https://doi.org/10.1007/s00158-022-03460-1
 
 [^2]: Cherrière, T. (2024) "Toward topology optimization of hybrid-excited 
-electrical machines using recursive material interpolation"
+electrical machines using recursive material interpolation",
 SCEE 2024, Darmstadt, Germany. 
 
-[^3]: Cherrière, T. and Laurent, L. (2023), Wachspress2D3D, 
-https://doi.org/10.5281/zenodo.7701776
+[^3]: Cherrière, T. and Laurent, L. (2023), Wachspress2D3D, https://doi.org/10.5281/zenodo.7701776
  
 [^4]: M. Floater, A. Gillette, and N. Sukumar, (2014).
 “Gradient bounds for Wachspress coordinates on polytopes,”

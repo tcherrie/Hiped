@@ -38,61 +38,34 @@ An illustration of such a hierarchical interpolation domain is given in the foll
 The routines computing the evaluation of the interpolation, the derivatives, and the projection of exterior $x$ onto $\mathcal{D}$ are provided, making it suitable for a projected gradient descent in optimization.
 
 ## Contents
-examples
-
-    | mfiles
+- examples
+    - mfiles   
+        - a_SimpleDomains.m : examples of simple interpolation domains
+        - b_SimpleScalarInterp.m : interpolation of scalar functions on a simple domain.
+        - c_SimpleVectorInterp.m : interpolation of vector functions on a simple domain.
+        - d_HierarchicalScalarInterp.m : interpolation of scalar functions on hierarchized domains.
+        - e_HierarchicalVectorInterp.m : interpolation of vector functions on hierarchized domains.
+        - f_VertexFunctionOperations.m : some playaround with the functions
+    - notebooks (same as in mfiles, but .mlx format)
+- src
+    - class (main code is here, definition of the classes)
+        - Domain.m
+        - Interpolation.m
+        - Penalization.m
+        - ShapeFunction.m
+        - VertexFunction.m
     
-    |    | a_SimpleDomains.m : examples of simple interpolation domains
-    
-    |    | b_SimpleScalarInterp.m : interpolation of scalar functions on a simple domain.
-    
-    |    | c_SimpleVectorInterp.m : interpolation of vector functions on a simple domain.
-    
-    |    | d_HierarchicalScalarInterp.m : interpolation of scalar functions on hierarchized domains.
-    
-    |    | e_HierarchicalVectorInterp.m : interpolation of vector functions on hierarchized domains.
-    
-    |    | f_VertexFunctionOperations.m : some playaround with the functions
-    
-    | notebooks 
-    
-         |(same as in mfiles, but .mlx format)
-         
-src
-
-    | class (main code is here, definition of the classes)
-    
-        | Domain.m
-        
-        | Interpolation.m
-        
-        | Penalization.m
-        
-        | ShapeFunction.m
-        
-        | VertexFunction.m
-    
-    | others (auxiliary functions for computation)
-    
-        | mult.m (function to simplify pagewise multiplications)
-        
-        | t.m (just a shorthand for pagetranspose)
-    
-    | vizualization (auxiliary functions for vizualization)
-    
-        | getTransformedPlan.m
-        
-        | legend2color.m
-        
-        | plotcolor2D.m
-        
-        | rot3D.m
-        
-        | rotPoint.m
-
-LICENSE
-
-README.md
+    - others (auxiliary functions for computation)
+        - mult.m (function to simplify pagewise multiplications)
+        - t.m (just a shorthand for pagetranspose)
+    - vizualization (auxiliary functions for vizualization)
+        - getTransformedPlan.m
+        - legend2color.m
+        - plotcolor2D.m
+        - rot3D.m
+        - rotPoint.m
+- LICENSE 
+- README.md
 
 ## Citation
 

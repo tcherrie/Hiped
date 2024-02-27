@@ -1,6 +1,6 @@
 # Hierarchical Interpolation with Projection, Evaluation and Derivation
 
-The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection and derivation) that can be used for instance in multimaterial topology optimization algorithms [^1][^2] as well as in other applications.
+The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection and derivation) that can be used for instance in multimaterial topology optimization algorithms [^1][^2] as well as in other applications using projected gradient descent.
 
 This code is a major upgrade of [^3], based itself on [^4].
 

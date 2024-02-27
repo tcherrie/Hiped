@@ -77,7 +77,7 @@ Bibtex entry :
 
 
 
-**NB: version number and DOI must be adapted from [Zenodo's repository.](https://doi.org/10.5281/zenodo.7701776)** 
+**NB: version number and DOI must be adapted from [Zenodo's repository.](XXX)** 
 
 ## License
 

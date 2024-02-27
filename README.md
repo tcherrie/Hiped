@@ -39,32 +39,59 @@ The routines computing the evaluation of the interpolation, the derivatives, and
 
 ## Contents
 examples
+
     | mfiles
+    
     |    | a_SimpleDomains.m : examples of simple interpolation domains
+    
     |    | b_SimpleScalarInterp.m : interpolation of scalar functions on a simple domain.
+    
     |    | c_SimpleVectorInterp.m : interpolation of vector functions on a simple domain.
+    
     |    | d_HierarchicalScalarInterp.m : interpolation of scalar functions on hierarchized domains.
+    
     |    | e_HierarchicalVectorInterp.m : interpolation of vector functions on hierarchized domains.
+    
     |    | f_VertexFunctionOperations.m : some playaround with the functions
+    
     | notebooks 
+    
          |(same as in mfiles, but .mlx format)
+         
 src
+
     | class (main code is here, definition of the classes)
+    
         | Domain.m
+        
         | Interpolation.m
+        
         | Penalization.m
+        
         | ShapeFunction.m
+        
         | VertexFunction.m
+    
     | others (auxiliary functions for computation)
+    
         | mult.m (function to simplify pagewise multiplications)
+        
         | t.m (just a shorthand for pagetranspose)
+    
     | vizualization (auxiliary functions for vizualization)
+    
         | getTransformedPlan.m
+        
         | legend2color.m
+        
         | plotcolor2D.m
+        
         | rot3D.m
+        
         | rotPoint.m
+
 LICENSE
+
 README.md
 
 ## Citation

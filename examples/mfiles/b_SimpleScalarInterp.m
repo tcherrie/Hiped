@@ -9,7 +9,6 @@ domain2D = Domain(5); % regular pentagon
 figure()
 domain2D.plot();
 %% 2) Definition of the scalar properties at each vertex
-% better name : vertexFunction ?
 
 f1s = VertexFunction(@(a) a.^2, @(a) 2*a, "a^2");
 f2s = VertexFunction(@(a) a.^3, @(a) 3*a.^2, "a^3");

@@ -8,8 +8,7 @@ path=path(s:e); addpath(genpath(path)); clear s e path
 domain2D = Domain(5); % regular pentagon
 figure()
 domain2D.plot();
-%% 2) Definition of the scalar properties at each vertex
-% better name : vertexFunction ?
+%% 2) Definition of the vector properties at each vertex
 
 dimInput = 2; dimOutput = 2;
 f1v = VertexFunction(@(b) b.^2, @(b) [2*b(1,1,:),zeros(1,1,size(b,3));zeros(1,1,size(b,3)),2*b(2,1,:)], "b.^2", dimInput, dimOutput);

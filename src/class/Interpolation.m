@@ -378,7 +378,7 @@ classdef Interpolation
 
             fobj = @(th) fmin(rotPoint((v3d-offset).',th(1),th(2),th(3)).'+offset);
             options = optimset('Display','off','algorithm','levenberg-marquardt');
-            thOpt = fsolve(fobj,[0;0;0],options);
+            thOpt = fsolve(fobj,rand(3,1)*1e-2,options);
 
             v3d = rotPoint((v3d-offset).',thOpt(1),thOpt(2),thOpt(3)).'+offset;
             xyz3d = rotPoint((xyz3d-offset).',thOpt(1),thOpt(2),thOpt(3)).'+offset;

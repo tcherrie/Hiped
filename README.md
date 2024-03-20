@@ -86,7 +86,7 @@ Bibtex entry:
     month        = feb,
     year         = 2024,
     publisher    = {Zenodo},
-    version      = {v1.0.1},
+    version      = {v0.0.2},
     doi          = {10.5281/zenodo.10718117},
     url          = {https://doi.org/10.5281/zenodo.10718117}
     }

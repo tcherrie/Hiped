@@ -1,11 +1,11 @@
-# Hierarchical Interpolation with Projection, Evaluation and Derivation
+# Hierarchical Interpolation with Projection, Evaluation, and Derivation
 
 [![GitHub license](https://img.shields.io/github/license/tcherrie/Hiped)](https://github.com/tcherrie/Hiped) [![GitHub release](https://img.shields.io/github/release/tcherrie/Hiped.svg)](https://github.com/tcherrie/Hiped/releases/) [![GitHub stars](https://img.shields.io/github/stars/tcherrie/Hiped)](https://github.com/tcherrie/Hiped/stargazers)
 [![DOI](https://zenodo.org/badge/763998095.svg)](https://zenodo.org/doi/10.5281/zenodo.10718117)
 
 
 
-The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection and derivation) that can be used for instance in multimaterial topology optimization algorithms [^1][^2] as well as in other applications using projected gradient descent.
+The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection, and derivation) that can be used, for instance, in multi-material topology optimization algorithms [^1][^2], as well as in other applications using projected gradient descent.
 
 This code is a major upgrade of [^3], based itself on [^4].
 
@@ -15,11 +15,11 @@ This code is a major upgrade of [^3], based itself on [^4].
 
 Start by running the example files in the folder "examples". If your Matlab version supports it, you can run the LiveScripts (in "examples/notebooks"), or traditional .m files (in "examples/mfiles"), in alphabetical order.
 
-**NB** : The code has been tested with success on Matlab R2023a.
+**NB**: The code has been successfully tested on Matlab R2023a.
 
 
 ## Purpose
-Let $a\in \mathbb{R}^d$, and $x \in \mathcal{D}$ a convex polytope in 1,2 or 3 dimensions. The polytope has $n$ vertices and looks like one on the following figure :
+Let $a\in \mathbb{R}^d$, and $x \in \mathcal{D}$ a convex polytope in 1,2 or 3 dimensions. The polytope has $n$ vertices and looks like one in the following figure :
 
 ![image](https://github.com/tcherrie/Hiped/assets/72595712/164ed134-ef6e-4506-9e88-63bb7bc9d1d0)
 
@@ -32,7 +32,7 @@ each of the $f_i$ being associated to a vertex of $\mathcal{D}$, and each of the
 
 $$ m(a,x) = \sum_{i}^n  P_i(\omega_i(x)) f_i(a),$$
 
-and extend the interpolation domain recursively, by defining a rooted tree of interpolations :
+and extend the interpolation domain recursively by defining a rooted tree of interpolations :
 
 $$ m(a,x) = \sum_{i}^n  P_i(\omega_i(x)) m_i(a,x)$$
 
@@ -76,22 +76,20 @@ The routines computing the evaluation of the interpolation, the derivatives, and
 
 Please use the following citation reference if you use the code:
 
-    T. Cherrière. tcherrie/Hiped: Hierarchical Interpolation with Projection, Evaluation and Derivation (v1.0.1), February 2024. Zenodo. https://doi.org/10.5281/zenodo.10718117
+    T. Cherrière. tcherrie/Hiped: Hierarchical Interpolation with Projection, Evaluation, and Derivation (v1.0.0), May 2024. Zenodo. https://doi.org/10.5281/zenodo.10718117
 
 Bibtex entry:
 
     @software{tcherrie_2024_10718117,
     author       = {Cherrière, Théodore},
     title        = {tcherrie/Hiped: Hierarchical Interpolation with Projection, Evaluation and Derivation},
-    month        = feb,
+    month        = may,
     year         = 2024,
     publisher    = {Zenodo},
-    version      = {v0.0.2},
+    version      = {v1.0.0},
     doi          = {10.5281/zenodo.10718117},
     url          = {https://doi.org/10.5281/zenodo.10718117}
     }
-
-**NB: version number and DOI must be adapted from [Zenodo's repository](https://doi.org/10.5281/zenodo.10718117)**, according to the version used.
 
 ## License
 

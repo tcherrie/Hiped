@@ -64,7 +64,7 @@ interpHierarchical.plot();
 %% 4) Definition of the variables
 % a) Coordinates in the polygon
 
-n = 1e2; % number of evaluation points
+n = 1e3; % number of evaluation points
 x = interpHierarchical.initializeVariable(n,"rand",0.6)
 x = interpHierarchical.projection(x);
 figure()

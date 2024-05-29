@@ -33,7 +33,7 @@ interpVector=Interpolation(defInterpVector);
 n = 1e4; % number of evaluation points
 x = interpVector.initializeVariable(n,"rand",0.6)
 x = interpVector.projection(x);
-interpVector.plot2(x);
+interpVector.plot(x);
 % b) Vector field
 % Each point $x$ is associated to a vector field value $b$.
 

@@ -31,8 +31,9 @@ interpVector=Interpolation(defInterpVector);
 % a) Coordinates in the polygon
 
 n = 1e4; % number of evaluation points
-x = interpVector.initializeVariable(n,"rand",0.6)
+x = interpVector.initializeVariable(n,"rand",0.4)
 x = interpVector.projection(x);
+figure()
 interpVector.plot(x);
 % b) Vector field
 % Each point $x$ is associated to a vector field value $b$.
@@ -93,7 +94,7 @@ xlabel("\epsilon")
 ylabel("Norm of Taylor remainder")
 title("Taylor remainder value w.r.t x")
 grid on
-% d) Speed tip
+%% 6) Speed tip
 % To compute several times the interpolation for different $a$ without changing 
 % the position $x$ in the domain, one should first compute the shape functions 
 % once for all.

@@ -61,10 +61,10 @@ interpHierarchical = Interpolation(defNode0);
 interpHierarchical.plotTree();
 figure()
 interpHierarchical.plot();
-%% 4) Definition of the variables
+%% 2) Definition of the variables
 % a) Coordinates in the polygon
 
-n = 1e3; % number of evaluation points
+n = 1e2; % number of evaluation points
 x = interpHierarchical.initializeVariable(n,"rand",0.6)
 x = interpHierarchical.projection(x);
 figure()
@@ -73,7 +73,7 @@ interpHierarchical.plot(x);
 % Each point $x$ is associated to a scalar field value $a$.
 
 a = rand(1,1,n);
-%% 5) Evaluation of the interpolation
+%% 3) Evaluation of the interpolation
 % a) Interpolated value
 
 tic
@@ -106,14 +106,29 @@ grid on
 % c) Derivative w. r. t. the position in the interpolation domain
 
 tic
-dvaldx =  interpHierarchical.evaldx(x,a); % derivative w.r.t x
+x0=x;
+dfdx =  interpHierarchical.evaldx(x,a); % derivative w.r.t x
 tdx1 = toc;
 disp(strcat("Compute interpolated x-derivative in ",num2str(tdx1*1000)," ms"))
 % Check the Taylor expansion
+% The computation of derivative in 3D domain is ill-conditionned near the boundaries. 
+% Therefore, the |epsProj| parameter sets the minimum distance between the projected 
+% points and the boundary. When |epsProj=0| the projection is exact but the computation 
+% of derivative is wrong, and if |epsProj| is big the computation of derivative 
+% is precise but the projection is wrong. |epsProj=1e-5| is a good tradeoff.
+
+epsProj = 1e-5;
+defNode0.Domain = Domain("tetra", 1, epsProj);
+interpHierarchical = Interpolation(defNode0);
+
+x = interpHierarchical.projection(x0);
+fCorrected = interpHierarchical.eval(x, a);
+dfdxCorrected = interpHierarchical.evaldx(x, a);
 
 epsilon = logspace(-8,-2,10); % test for different epsilon
 allLabel = [interpHierarchical.getAllNodes.Label];
 res = zeros(10,length(allLabel),n);
+resXCorrected = zeros(10,length(allLabel),n);
 
 for i=1:10
     for j=1:length(allLabel)
@@ -121,19 +136,26 @@ for i=1:10
         pert = epsilon(i)*rand(size(x.(l)));
         xPert = x;
         xPert.(l) = x.(l) + pert;
+        xPert = interpHierarchical.projection(xPert);
+        pert = xPert.(l) - x.(l);
         valPerturbedx = interpHierarchical.eval(xPert,a);
         pert = permute(pert,[2,3,1]);
-        res(i,j,:) = vecnorm(valPerturbedx - (val + mult(dvaldx.(l),pert)),2,1);
+        res(i,j,:) = vecnorm(valPerturbedx - (val + mult(dfdx.(l),pert)),2,1);
+        resXCorrected(i,j,:) = vecnorm(valPerturbedx - (fCorrected + mult(dfdxCorrected.(l),pert)),2,1);
     end
 end
 MaxRes = max(res,[],[2,3]); medRes = median(res,[2,3]);
-loglog(epsilon,medRes,'-o',epsilon,MaxRes,'-o',epsilon,epsilon.^2,'k--');
-legend("med res","max res","\epsilon^2","Location","northwest")
+maxResXCorrected = max(resXCorrected,[],[2,3]); medResXCorrected = median(resXCorrected,[2,3]);
+
+loglog(epsilon,medRes,'-o',epsilon,MaxRes,'-o'); hold on;
+loglog(epsilon,maxResXCorrected,'-o',epsilon,medResXCorrected,'-o',epsilon,epsilon.^2,'k--'); hold off
+
+legend("med res","max res", "med res corr.", "max res corr.", "\epsilon^2","Location","bestoutside")
 xlabel("\epsilon")
 ylabel("Norm of Taylor remainder")
 title("Taylor remainder value w.r.t x")
 grid on
-% d) Speed tip
+%% 4) Speed tip
 % To compute several times the interpolation for different $a$ without changing 
 % the position $x$ in the domain, one should first compute the shape functions 
 % once for all.

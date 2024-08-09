@@ -22,6 +22,8 @@ f1s = f1s*9+pi
 
 f2s = f1s.*(f2s/3+f3s*2).^(-f2s)
 f3s = f1s./f3s
+
+f1s.plot()
 % b) Interpolation
 % a) Definition of the interpolation domain
 
@@ -102,10 +104,10 @@ dimInput = 2;  dimOutput = 2;
 f1v = VertexFunction(@(b) b.^2, @(b) [2*b(1,1,:),zeros(1,1,size(b,3));zeros(1,1,size(b,3)),2*b(2,1,:)], "b.^2", dimInput, dimOutput);
 f2v = VertexFunction(@(b) b.^3, @(b)  [3*b(1,1,:).^2,zeros(1,1,size(b,3));zeros(1,1,size(b,3)),3*b(2,1,:).^2], "b.^3", dimInput, dimOutput);
 
-f3v = f1v.innerProduct(f2v)
+f3v = f1v.innerProduct(f2v) .* f2v
 f1v = f3v *2;
 f2v = f3v +4;
-
+f2v.plot()
 % b) Interpolation
 % a) Definition of the interpolation domain
 

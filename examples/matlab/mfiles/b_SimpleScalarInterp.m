@@ -94,7 +94,7 @@ xlabel("\epsilon")
 ylabel("Norm of Taylor remainder")
 title("Taylor remainder value w.r.t x")
 grid on
-% d) Speed tip
+%% 6) Speed tip
 % To compute several times the interpolation for different $a$ without changing 
 % the position $x$ in the domain, one should first compute the shape functions 
 % once for all.

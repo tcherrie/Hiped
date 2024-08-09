@@ -24,13 +24,13 @@ f121v = VertexFunction(@(b) ones(size(b)), @(b) zeros(2,2,size(b,3)), "f121v", d
 f122v = VertexFunction(@(b) mult([1,2;3,4],b), @(b) [1,2;3,4].*ones(1,1,size(b,3)), "f122v", dimInput, dimOutput);
 defNode12.Children = [f121v,f122v];
 defNode12.Label = "n12";
-defNode12.Penalization = Penalization("ramp",2);
+defNode12.Penalization = Penalization("simp",2);
 Node12 = Interpolation(defNode12);
 
 defNode1.Domain = Domain(2);
 defNode1.Children = [Node11,Node12];
 defNode1.Label = "n1";
-defNode1.Penalization = Penalization("ramp_inv",2);
+defNode1.Penalization = Penalization("simp",2);
 Node1 = Interpolation(defNode1);
 
 
@@ -51,7 +51,7 @@ f41v = VertexFunction(@(b) b.^2, @(b) [2*b(1,1,:),zeros(1,1,size(b,3));zeros(1,1
 f42v = VertexFunction(@(b) b.^3, @(b)  [3*b(1,1,:).^2,zeros(1,1,size(b,3));zeros(1,1,size(b,3)),3*b(2,1,:).^2], "f42v", dimInput, dimOutput);
 defNode4.Children = [f41v,f42v];
 defNode4.Label = "n4";
-defNode4.Penalization = Penalization("ramp_inv",2);
+defNode4.Penalization = Penalization("simp",2);
 Node4 = Interpolation(defNode4);
 
 % Finally, we define the root and the all tree
@@ -59,17 +59,17 @@ Node4 = Interpolation(defNode4);
 defNode0.Domain = Domain("tetra");
 defNode0.Children = [Node1,Node2,Node3,Node4];
 defNode0.Label = "root";
-defNode0.Penalization = Penalization("lukas",2);
+defNode0.Penalization = Penalization("simp",2);
 interpHierarchicalVector = Interpolation(defNode0);
 
 interpHierarchicalVector.plotTree();
 figure()
 interpHierarchicalVector.plot();
-%% 4) Definition of the variables
+%% 2) Definition of the variables
 % a) Coordinates in the polygon
 
-n = 1e4; % number of evaluation points
-x = interpHierarchicalVector.initializeVariable(n,"rand",0.6)
+n = 1e3; % number of evaluation points
+x = interpHierarchicalVector.initializeVariable(n,"rand",1)
 x = interpHierarchicalVector.projection(x);
 figure()
 interpHierarchicalVector.plot(x);
@@ -77,7 +77,7 @@ interpHierarchicalVector.plot(x);
 % Each point $x$ is associated to a vector field value $b$.
 
 b = rand(2,1,n);
-%% 5) Evaluation of the interpolation
+%% 3) Evaluation of the interpolation
 % a) Interpolated value
 
 tic
@@ -87,7 +87,7 @@ disp(strcat("Compute interpolated values in ",num2str(tv1*1000)," ms"))
 % b) Derivative w. r. t. the scalar field
 
 tic
-dvalda =  interpHierarchicalVector.evalda(x,b); % derivative w.r.t a
+dfda =  interpHierarchicalVector.evalda(x,b); % derivative w.r.t a
 tda1 = toc;
 disp(strcat("Compute interpolated a-derivative in ",num2str(tda1*1000)," ms"))
 % Check the Taylor expansion
@@ -98,7 +98,7 @@ res = zeros(10,1,n);
 for i=1:10
     pert = epsilon(i)*rand(size(b));
     valPerturbeda = interpHierarchicalVector.eval(x,b+pert);
-    res(i,1,:) = vecnorm(valPerturbeda - (val + mult(dvalda,pert)),2,1);
+    res(i,1,:) = vecnorm(valPerturbeda - (val + mult(dfda,pert)),2,1);
 end
 MaxRes = max(res,[],3); medRes = median(res,3);
 loglog(epsilon,medRes,'-o',epsilon,MaxRes,'-o',epsilon,epsilon.^2,'k--');
@@ -110,14 +110,29 @@ grid on
 % c) Derivative w. r. t. the position in the interpolation domain
 
 tic
-dvaldx =  interpHierarchicalVector.evaldx(x,b); % derivative w.r.t x
+x0=x;
+dfdx =  interpHierarchicalVector.evaldx(x,b); % derivative w.r.t x
 tdx1 = toc;
 disp(strcat("Compute interpolated x-derivative in ",num2str(tdx1*1000)," ms"))
 % Check the Taylor expansion
+% The computation of derivative in 3D domain is ill-conditionned near the boundaries. 
+% Therefore, the |epsProj| parameter sets the minimum distance between the projected 
+% points and the boundary. When |epsProj=0| the projection is exact but the computation 
+% of derivative is wrong, and if |epsProj| is big the computation of derivative 
+% is precise but the projection is wrong. |epsProj=1e-5| is a good tradeoff.
+
+epsProj = 1e-5;
+defNode0.Domain = Domain("tetra", 1, epsProj);
+interpHierarchicalVector = Interpolation(defNode0);
+
+x = interpHierarchicalVector.projection(x0);
+fCorrected = interpHierarchicalVector.eval(x, b);
+dfdxCorrected = interpHierarchicalVector.evaldx(x, b);
 
 epsilon = logspace(-8,-2,10); % test for different epsilon
 allLabel = [interpHierarchicalVector.getAllNodes.Label];
 res = zeros(10,length(allLabel),n);
+resXCorrected = zeros(10,length(allLabel),n);
 
 for i=1:10
     for j=1:length(allLabel)
@@ -125,19 +140,26 @@ for i=1:10
         pert = epsilon(i)*rand(size(x.(l)));
         xPert = x;
         xPert.(l) = x.(l) + pert;
+        xPert = interpHierarchicalVector.projection(xPert);
+        pert = xPert.(l) - x.(l);
         valPerturbedx = interpHierarchicalVector.eval(xPert,b);
         pert = permute(pert,[2,3,1]);
-        res(i,j,:) = vecnorm(valPerturbedx - (val + mult(dvaldx.(l),pert)),2,1);
+        res(i,j,:) = vecnorm(valPerturbedx - (val + mult(dfdx.(l),pert)),2,1);
+        resXCorrected(i,j,:) = vecnorm(valPerturbedx - (fCorrected + mult(dfdxCorrected.(l),pert)),2,1);
     end
 end
 MaxRes = max(res,[],[2,3]); medRes = median(res,[2,3]);
-loglog(epsilon,medRes,'-o',epsilon,MaxRes,'-o',epsilon,epsilon.^2,'k--');
-legend("med res","max res","\epsilon^2","Location","northwest")
+maxResXCorrected = max(resXCorrected,[],[2,3]); medResXCorrected = median(resXCorrected,[2,3]);
+
+loglog(epsilon,medRes,'-o',epsilon,MaxRes,'-o'); hold on;
+loglog(epsilon,maxResXCorrected,'-o',epsilon,medResXCorrected,'-o',epsilon,epsilon.^2,'k--'); hold off
+
+legend("med res","max res", "med res corr.", "max res corr.", "\epsilon^2","Location","bestoutside")
 xlabel("\epsilon")
 ylabel("Norm of Taylor remainder")
 title("Taylor remainder value w.r.t x")
 grid on
-% d) Speed tip
+%% 4) Speed tip
 % To compute several times the interpolation for different $a$ without changing 
 % the position $x$ in the domain, one should first compute the shape functions 
 % once for all.

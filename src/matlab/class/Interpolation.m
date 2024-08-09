@@ -284,8 +284,8 @@ classdef Interpolation
             if nargin<=1 || isempty(nodes)
                 nodes = Interpolation.empty();
             end
+            nodes = [nodes; obj];
             if class(obj.Children) == "Interpolation"
-                nodes = [nodes;obj.Children(:)];
                 for i=1:numel(obj.Children)
                     nodes = obj.Children(i).getAllNodes(nodes);
                 end

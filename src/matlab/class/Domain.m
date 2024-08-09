@@ -1,24 +1,36 @@
 classdef Domain
     %Domain Class
     %
-    % To create an interpolation domain, use the constructor 
-    % obj = Domain(type,radius)
+    %Domain(type, radius, epsProj)
     %
-    % For 0D, 1D and 2D regular polytopes, 'type' is a number which
+    % For 0D, 1D and 2D regular polytopes, type is a number which
     % indicates the number of vertices :
-    %  type = 1 : 1 vertex = a dot (0D)
-    %  type = 2 : 2 vertices = a line (1D)
-    %  type = n > 2 : a regular 2D polygon with n vertices
+    %  type = 1 -> a dot (dimension = 0)
+    %  type = 2 -> a line (dimension = 1)
+    %  type = n > 2 -> a regular polygon with n vertices (dimension 2)
     %
-    % For 3D polytopes, type is a string which denotes a specific
+    % For 3D polytopes, type is a string which denote a specific
     % polytope. Available :
     %  "tetra" or "tetraedron" -> tetraedron
     %  "cube" -> cube
-    %  "diamondN" -> diamond with a base of N vertices (N is an integer)
-    %  "prismN" -> prism with a base of N vertices (N is an integer)
+    %  "diamondN" -> diamond with a base of N vertices (N is a number)
+    %  "prismN" -> prism with a base of N vertices (N is a number)
     %
     % radius is a float, representing the radius of the circumcircle
-    % (default value = 1)
+    % (default value = 1).
+    %
+    % epsProj is a float determining the accuracy of the
+    % projection. 0 leads to exact solution but singular shape 
+    % functions values. Default 1e-5
+    %
+    % to add 2D domains, just add the vertices (however the 
+    % available regular polygons should satisfy all your needs)
+    % to add 3D domains, the vertices are not sufficient, one
+    % should also specify the edges, the facets and their
+    % connectivity.
+    %
+    % In all cases, the polytopes must be convex and centered on 
+    % the origin.
     %
     %Copyright (C) 2024 Théodore CHERRIERE (theodore.cherriere@ricam.oeaw.ac.at.fr)
     %This program is free software: you can redistribute it and/or modify
@@ -46,8 +58,8 @@ classdef Domain
     end
     
     methods
-        function obj = Domain(type,radius)
-            %obj = Domain(type,radius)
+        function obj = Domain(type,radius, epsProj)
+            %obj = Domain(type, radius, epsProj)
             %
             % For 0D, 1D and 2D regular polytopes, type is a number which
             % indicates the number of vertices :
@@ -64,6 +76,10 @@ classdef Domain
             %
             % radius is a float, representing the radius of the circumcircle
             % (default value = 1).
+            %
+            % epsProj is a float determining the accuracy of the
+            % projection. 0 leads to exact solution but singular shape 
+            % functions values. Default 1e-5
             %
             % to add 2D domains, just add the vertices (however the 
             % available regular polygons should satisfy all your needs)
@@ -273,8 +289,9 @@ classdef Domain
                     end
                 end
                 
+                if nargin<=2 || isempty(epsProj), epsProj = 1e-5; end
                 if size(obj.Vertices,2)==2
-                    [cones_edge,cones_vertices,edges,vertices]=normalFan2D(v);
+                    [cones_edge,cones_vertices,edges,vertices]=normalFan2D(v,epsProj);
                     obj.NormalFan.cones_edge=cones_edge;
                     obj.NormalFan.cones_vertices=cones_vertices;
                     obj.NormalFan.edges=edges;
@@ -286,7 +303,7 @@ classdef Domain
                     obj.Normals=((normales).')./vecnorm(normales.',2,2);
                     
                 elseif size(obj.Vertices,2)==3
-                    [cones_facets,cones_edges,cones_vertices,facets,edges,vertices]=normalFan3D(obj);
+                    [cones_facets,cones_edges,cones_vertices,facets,edges,vertices]=normalFan3D(obj,epsProj);
                     obj.NormalFan.cones_facets=cones_facets;
                     obj.NormalFan.cones_edges=cones_edges;
                     obj.NormalFan.cones_vertices=cones_vertices;
@@ -303,7 +320,6 @@ classdef Domain
         function val = projection(obj,val)
             % val = projection(obj,val)
             % projection of val onto the domain
-            epsilon=1e-7;
             if obj.Dimension==1
                 val(val<-0.5)=-0.5;
                 val(val>0.5)=0.5;
@@ -313,7 +329,7 @@ classdef Domain
                 edg = obj.NormalFan.edges;
                 vert = obj.NormalFan.vertices;
                 % Projection with the normal fan
-                val=projection2D(val,con_ver,con_edg,vert,edg,epsilon);
+                val=projection2D(val,con_ver,con_edg,vert,edg);
                 
             elseif obj.Dimension==3
                 con_fac = obj.NormalFan.cones_facets;
@@ -323,7 +339,7 @@ classdef Domain
                 edg = obj.NormalFan.edges;
                 vert = obj.NormalFan.vertices;
                 % Projection with the normal fan
-                val=projection3D(val,obj.Normals,con_fac,con_edg,con_ver,fac,edg,vert,epsilon);
+                val=projection3D(val,obj.Normals,con_fac,con_edg,con_ver,fac,edg,vert);
             end
         end
         
@@ -535,21 +551,19 @@ end
 
 %% Projection function
 
-function [rectangles,triangles,edges,vertices]=normalFan2D(v,epsilon)
-% [rectangles,triangles,edges,vertices]=normalFan2D(v,epsilon)
+function [rectangles,triangles,edges,vertices]=normalFan2D(v,epsProj)
+% [rectangles,triangles,edges,vertices]=normalFan2D(v,epsProj)
 %
 % returns a list of triangles and rectangles that constitute the normal
 % fan of the polygon (which must be convex), as well as the associated 
 % edges and points.
 
-L = 1e6;
-if nargin<=2
-    epsilon=1e-7;
-end
+L = 1000;
+if nargin<=1 || isempty(epsProj),  epsProj=1e-5; end
 
 nv=length(v);
 v=v-mean(v,1);
-v=v*(1-epsilon);
+v=v*(1-epsProj);
 edges=[(1:nv).',[(2:nv),1].'];
 vertices=v;
 normals=[0,1;-1 0]*(v(edges(:,2),:)-v(edges(:,1),:)).';
@@ -589,29 +603,25 @@ triangles{1}=polyshape(p(:,1),p(:,2));
 %plot(triangles{1},'facecolor','r')
 end
 
-function [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsilon)
-% [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsilon)
+function [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj)
+% [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj)
 %
 % returns a list of prisms, roofs, cones that constitute the normal
 % fan of the 3D polytope (which must be convex), as well as the associated 
 % facets, edges and points.
 
-
-if nargin<=2
-    epsilon=1e-7;
-end
+if nargin<=1 || isempty(epsProj),  epsProj=1e-5; end
 
 v=domain.Vertices;
-
 v=v-mean(v,1);
-v=v*(1-epsilon);
+v=v*(1-epsProj);
 
 edges=domain.Edges;
 facets=domain.Facets;
 vertices=v;
 normals=domain.Normals;
 
-L=1e6;
+L=1000;
 
 nv=length(v); ne=length(edges); nf=length(facets);
 
@@ -662,15 +672,10 @@ end
 
 end
 
-
-function rho=projection2D(rho,triangles,rectangles,vertices,edges,epsilon)
-% rho=projection2D(rho,triangles,rectangles,vertices,edges,epsilon)
+function rho=projection2D(rho,triangles,rectangles,vertices,edges)
+% rho=projection2D(rho,triangles,rectangles,vertices,edges)
 %
 % returns projected values onto a convex 2D polygon.
-
-if nargin <=5 || isempty(epsilon)
-    epsilon=1e-7;
-end
 
     % 1) projection on vertices (triangles in the normal fan)
 N=length(triangles);
@@ -678,8 +683,8 @@ for i=1:N
     s=triangles{i}.Vertices;
     in=inpolygon(rho(:,1),rho(:,2),s(:,1),s(:,2));
     if sum(in)>0
-        rho(in,1)=vertices(i,1)*(1-epsilon);
-        rho(in,2)=vertices(i,2)*(1-epsilon);
+        rho(in,1)=vertices(i,1);
+        rho(in,2)=vertices(i,2);
     end
 end
 
@@ -689,7 +694,7 @@ for i=1:N
     s=rectangles{i}.Vertices;
     in=inpolygon(rho(:,1),rho(:,2),s(:,1),s(:,2));
     if sum(in)>0
-        projpoints=proj([vertices(edges(i,:).',1),vertices(edges(i,:).',2)]*(1-epsilon), rho(in,:));
+        projpoints=proj([vertices(edges(i,:).',1),vertices(edges(i,:).',2)], rho(in,:));
         rho(in,:)=shiftdim(projpoints,2);
     end
 end
@@ -714,20 +719,17 @@ invb=[b(1,1), b(2,1); b(1,2), b(2,2)]./detb;
 ProjPoint = -mult(invb,a);
 end
 
-function rho=projection3D(rho,un,prismes,toits,cones,facets,edges,vertices,epsilon)
+function rho=projection3D(rho,un,prismes,toits,cones,facets,edges,vertices)
 
-if nargin<=8 || isempty(epsilon)
-    epsilon=1e-7;
-end
     % 1) projection on vertices (cones)
 N=length(cones);
 vertices=vertices-mean(vertices,1);
 for i=1:N
     in=inShape(cones{i},rho);
     if sum(in)>0
-        rho(in,1)=(1-epsilon)*vertices(i,1);
-        rho(in,2)=(1-epsilon)*vertices(i,2);
-        rho(in,3)=(1-epsilon)*vertices(i,3);
+        rho(in,1)=vertices(i,1);
+        rho(in,2)=vertices(i,2);
+        rho(in,3)=vertices(i,3);
     end
 end
 
@@ -739,7 +741,7 @@ for i=1:N
     if sum(in)>0
         p=vertices(edges(i,1),:);
         vec_dir=vertices(edges(i,2),:)-vertices(edges(i,1),:);
-        projpoints=projEdges((1-epsilon)*vec_dir,(1-epsilon)*p,rho(in,:));
+        projpoints=projEdges(vec_dir,p,rho(in,:));
         rho(in,:)=shiftdim(projpoints,2);
     end
 end
@@ -752,7 +754,7 @@ for i=1:N
     if sum(in)>0
         p=vertices(edges(abs(facets{i}(1)),1),:);
         n=un(i,:);
-        projpoints=proj_plan(n,(1-epsilon)*p,rho(in,:));
+        projpoints=proj_plan(n,p,rho(in,:));
         rho(in,:)=shiftdim(projpoints,2);
     end
 end

@@ -16,7 +16,7 @@ from  matplotlib.tri import Triangulation
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 class Domain:
-    def __init__(self, domain_type, radius=1, lengthNormalFan = 100, epsProj=1e-5):
+    def __init__(self, domain_type, radius=1, lengthNormalFan = 1000, epsProj=1e-5):
         
         self.Vertices = None
         self.Edges = None
@@ -405,11 +405,12 @@ Normal fan (for projection)
 '''
 
 class NormalFan:
-    def __init__(self, domain, length = 100, epsProj = 1e-5):
+    def __init__(self, domain, length = 1000, epsProj = 1e-5):
         self.EpsProj = epsProj
         dProj = deepcopy(domain)
         dProj.Vertices = dProj.Vertices * (1-epsProj)
         self.DomainProj = dProj
+        self.Length = length
         if domain.Dimension == 2:
             rectangles, triangles = normalFan2D(dProj, length)
             self.ConesEdges = rectangles
@@ -445,7 +446,7 @@ class NormalFan:
         plt.show()
         
     
-def normalFan2D(domain, length = 100):
+def normalFan2D(domain, length = 1000):
     rectangles = []
     triangles = []
     n = domain.Vertices.shape[0]
@@ -470,7 +471,7 @@ def normalFan2D(domain, length = 100):
     return rectangles, triangles
 
 
-def normalFan3D(domain, length = 100):
+def normalFan3D(domain, length = 1000):
     prismFacet = []
     roofsEdges = []
     conesVertices = []
@@ -516,18 +517,20 @@ class Simple2Dpolygon:
         
     def computeArea(self, pTest):
         # pTest : Nx2 array
-        area = 0
+        area = []
         n= self.Vertices.shape[0]
         pTest = pTest.reshape(-1,2)
         for i in range(n):
             p1 = self.Vertices[i]
             p2 = self.Vertices[(i+1) % n]
-            area += np.abs(np.cross(p1-pTest,p2-pTest, axis = 1))
+            area.append(np.abs(np.cross(p1-pTest,p2-pTest, axis = 1)))
+        area = np.sort(np.array(area), axis = 0)
+        area=np.sum(area, axis = 0)
         return area / 2
     
-    def isInside(self, pTest, tol = 1e-8):
+    def isInside(self, pTest, tol = 1e-10):
         area = self.computeArea(pTest)
-        return area <= (self.Area + tol)
+        return area <= (self.Area * (1+tol))
     
     def plot(self, color = 'r', alpha = 0.5):
         sequence = np.concatenate([np.arange(0,self.Vertices.shape[0]),[0]], axis = 0)
@@ -548,19 +551,21 @@ class Simple3Dpolyedron:
 
     def computeVol(self, pTest):
         # pTest : Nx2 array
-        vol = 0
+        vol = []
         n = len(self.MeshSurf)
         pTest = pTest.reshape(-1,3)
         for i in range(n):
             p1 = self.Vertices[self.MeshSurf[i][0]]
             p2 = self.Vertices[self.MeshSurf[i][1]]
             p3 = self.Vertices[self.MeshSurf[i][2]]
-            vol += np.abs(np.sum(np.cross(p1-pTest, p2-pTest, axis = 1) * (p3-pTest), axis = 1)) 
+            vol.append(np.abs(np.sum(np.cross(p1-pTest, p2-pTest, axis = 1) * (p3-pTest), axis = 1)))
+        vol = np.sort(np.array(vol), axis = 0)
+        vol=np.sum(vol, axis = 0)
         return vol / 6
     
-    def isInside(self, pTest, tol = 1e-8):
+    def isInside(self, pTest, tol = 1e-10):
         vol = self.computeVol(pTest)
-        return vol <= (self.Volume + tol) 
+        return vol <= (self.Volume * (1+tol)) 
 
 def prism3DBaseNormal(base1, un, length = 100):
     # the vertices in "base" should be ordered
@@ -643,32 +648,43 @@ def projection2D(rho, domain):
     """
     Returns projected values onto a convex 2D polygon.
     """
+    dProj = domain.NormalFan.DomainProj
+    nv = dProj.Vertices.shape[0]
+    nr = rho.shape[0]
+    rhoProj = rho.copy()
+
+    # 0) reduce the radius of points outside normalFan (supposed to be far away)
+    
+    R = np.linalg.norm(rho, axis = 1)
+    L = domain.NormalFan.Length
+    coeff = 0.45
+    indL = R>(L*coeff)
+    rhoProj[indL,:] = rhoProj[indL,:] * (L/R[indL]*coeff).reshape(-1,1)
+    
     # 1) projection on vertices (triangles in the normal fan)
     dProj = domain.NormalFan.DomainProj
     nv = dProj.Vertices.shape[0]
     nr = rho.shape[0]
     indToDo = np.full(nr, True)
-    rhoProj = rho.copy()
     for i in range(nv):
         triangle = domain.NormalFan.ConesVertices[i]
-        inTri= triangle.isInside(rho[indToDo,:])
+        inTri= triangle.isInside(rhoProj[indToDo,:])
         index = np.full(nr, False)
         index[indToDo] = inTri
         indToDo = indToDo & ~index
-        rhoProj[index, :] = dProj.Vertices[i, :] #* (1 - domain.NormalFan.EpsProj)
+        rhoProj[index, :] = dProj.Vertices[i, :]
 
     # 2) projection on edges (rectangles in the normal fan)
     for i in range(nv):
         rectangle = domain.NormalFan.ConesEdges[i]
-        inRect= rectangle.isInside(rho[indToDo,:])
+        inRect= rectangle.isInside(rhoProj[indToDo,:])
         edge = np.vstack([dProj.Vertices[i],dProj.Vertices[(i+1)%nv]])
         index = np.full(nr, False)
         index[indToDo] = inRect
         indToDo = indToDo & ~index
-        #projpoints=proj(edge*(1-domain.NormalFan.EpsProj), rho[index,:])
-        projpoints=proj(edge, rho[index,:])
+        projpoints=proj(edge, rhoProj[index,:])
         rhoProj[index,:]= projpoints
-    #indToDo[indToDo] =  ~ Simple2Dpolygon(domain.Vertices).isInside(rho[indToDo,:])
+    #indToDo[indToDo] =  ~ Simple2Dpolygon(domain.Vertices).isInside(rhoProj[indToDo,:])
     #plt.plot(indToDo)
     return rhoProj
 
@@ -693,6 +709,9 @@ def projPlane(n, p, q):
     proj_points = q - mult(q - p, n.reshape(-1,1)) * n
     return proj_points.transpose(2,1,0).reshape(-1,3)
 
+
+
+
 def projection3D(rho, domain):
     """
     Returns projected values onto a convex 3D polyedron
@@ -702,32 +721,39 @@ def projection3D(rho, domain):
     indToDo = np.full(nr, True)
     rhoProj = rho.copy()
     #eps = domain.NormalFan.EpsProj
+    
+    # 0) reduce the radius of points outside normalFan (supposed to be far away)
+    
+    R = np.linalg.norm(rho, axis = 1)
+    L = domain.NormalFan.Length
+    coeff = 0.3
+    indL = R>(L*coeff)
+    rhoProj[indL,:] = rhoProj[indL,:] * (L/R[indL]*coeff).reshape(-1,1) # tetra
 
     # 1) projection on vertices (cones in the normal fan)
     cv = domain.NormalFan.ConesVertices
     for i in range(len(cv)):
-        inTri= cv[i].isInside(rho[indToDo,:])
+        inTri= cv[i].isInside(rhoProj[indToDo,:])
         index = np.full(nr, False)
         index[indToDo] = inTri
         indToDo = indToDo & ~index
-        rhoProj[index, :] = dProj.Vertices[i, :]# * (1 - eps)
+        rhoProj[index, :] = dProj.Vertices[i, :]
 
     # 2) projection on edges (roofs in the normal fan)
     ce = domain.NormalFan.ConesEdges
     for i in range(len(ce)):
-        inRect= ce[i].isInside(rho[indToDo,:])
+        inRect= ce[i].isInside(rhoProj[indToDo,:])
         index = np.full(nr, False)
         index[indToDo] = inRect
         indToDo = indToDo & ~index
         p = dProj.Vertices[domain.Edges[i][0],:]
         vec_dir = dProj.Vertices[domain.Edges[i][1],:] - p
-        #rhoProj[index,:]= projEdges(vec_dir * (1-eps), p * (1-eps), rho[index,:])
-        rhoProj[index,:]= projEdges(vec_dir, p, rho[index,:])
+        rhoProj[index,:]= projEdges(vec_dir, p, rhoProj[index,:])
         
      # 3) projection on facets (prisms in the normal fan)
     cf = domain.NormalFan.ConesFacets
     for i in range(len(cf)):
-        inPrism= cf[i].isInside(rho[indToDo,:])
+        inPrism= cf[i].isInside(rhoProj[indToDo,:])
         index = np.full(nr, False)
         index[indToDo] = inPrism
         indToDo = indToDo & ~index
@@ -735,15 +761,15 @@ def projection3D(rho, domain):
         edg = domain.Edges[abs(domain.Facets[i][0])-1]
         p = dProj.Vertices[edg[0],:]
         vec_dir = dProj.Vertices[edg[1],:] - p
-        #rhoProj[index,:]= projPlane(un, p - un*eps,  rho[index,:])
-        rhoProj[index,:]= projPlane(un, p,  rho[index,:])
+        rhoProj[index,:]= projPlane(un, p,  rhoProj[index,:])
     
     # debug
-    #indToDo[indToDo] =  ~ pyramid3D(domain.Vertices[:-1,:], [domain.Vertices[-1,:]]).isInside(rho[indToDo,:])
+    #indToDo[indToDo] =  ~ pyramid3D(domain.Vertices[:-1,:], [domain.Vertices[-1,:]]).isInside(rhoProj[indToDo,:])
     #domain.NormalFan.plot()
-    #plt.gca().scatter(rho[indToDo,0],rho[indToDo,1],rho[indToDo,2],s = 100)
+    #plt.gca().scatter(rhoProj[indToDo,0],rhoProj[indToDo,1],rhoProj[indToDo,2],s = 100)
     #plt.plot(indToDo)
     return rhoProj
+
 
 
 #Domain(3).plot()

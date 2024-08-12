@@ -1,7 +1,7 @@
 classdef Domain
     %Domain Class
     %
-    %Domain(type, radius, epsProj)
+    %Domain(type,radius, epsProj,lengthNormalFan)
     %
     % For 0D, 1D and 2D regular polytopes, type is a number which
     % indicates the number of vertices :
@@ -22,6 +22,13 @@ classdef Domain
     % epsProj is a float determining the accuracy of the
     % projection. 0 leads to exact solution but singular shape 
     % functions values. Default 1e-5
+    %
+    % lengthNormalFan is the length of the Normal fan cones. When the
+    % points to project are outside the circle with 0.49*lengthNormalFan
+    % radius in 2D (based on equilateral triangle domain) or outside a 
+    % sphere with 0.32*lengthNormalFan radius (based on regular
+    % tetraedron), they are first projected onto the associated cirle /
+    % sphere to be inside the normal cones. Default : 1000
     %
     % to add 2D domains, just add the vertices (however the 
     % available regular polygons should satisfy all your needs)
@@ -58,7 +65,7 @@ classdef Domain
     end
     
     methods
-        function obj = Domain(type,radius, epsProj)
+        function obj = Domain(type,radius, epsProj,lengthNormalFan)
             %obj = Domain(type, radius, epsProj)
             %
             % For 0D, 1D and 2D regular polytopes, type is a number which
@@ -290,12 +297,14 @@ classdef Domain
                 end
                 
                 if nargin<=2 || isempty(epsProj), epsProj = 1e-5; end
+                if nargin<=3 || isempty(lengthNormalFan), lengthNormalFan = 1000; end
                 if size(obj.Vertices,2)==2
-                    [cones_edge,cones_vertices,edges,vertices]=normalFan2D(v,epsProj);
+                    [cones_edge,cones_vertices,edges,vertices]=normalFan2D(v,epsProj,lengthNormalFan);
                     obj.NormalFan.cones_edge=cones_edge;
                     obj.NormalFan.cones_vertices=cones_vertices;
                     obj.NormalFan.edges=edges;
                     obj.NormalFan.vertices=vertices;
+                    obj.NormalFan.length = lengthNormalFan;
                     obj.Dimension=2;
                     
                     obj.Edges=edges;
@@ -303,13 +312,14 @@ classdef Domain
                     obj.Normals=((normales).')./vecnorm(normales.',2,2);
                     
                 elseif size(obj.Vertices,2)==3
-                    [cones_facets,cones_edges,cones_vertices,facets,edges,vertices]=normalFan3D(obj,epsProj);
+                    [cones_facets,cones_edges,cones_vertices,facets,edges,vertices]=normalFan3D(obj,epsProj,lengthNormalFan);
                     obj.NormalFan.cones_facets=cones_facets;
                     obj.NormalFan.cones_edges=cones_edges;
                     obj.NormalFan.cones_vertices=cones_vertices;
                     obj.NormalFan.facets=facets;
                     obj.NormalFan.edges=edges;
                     obj.NormalFan.vertices=vertices;
+                    obj.NormalFan.length = lengthNormalFan;
                     obj.Dimension=3;
                 end
             end
@@ -328,8 +338,9 @@ classdef Domain
                 con_ver = obj.NormalFan.cones_vertices;
                 edg = obj.NormalFan.edges;
                 vert = obj.NormalFan.vertices;
+                L = obj.NormalFan.length;
                 % Projection with the normal fan
-                val=projection2D(val,con_ver,con_edg,vert,edg);
+                val=projection2D(val,con_ver,con_edg,vert,edg,L);
                 
             elseif obj.Dimension==3
                 con_fac = obj.NormalFan.cones_facets;
@@ -338,8 +349,9 @@ classdef Domain
                 fac = obj.NormalFan.facets;
                 edg = obj.NormalFan.edges;
                 vert = obj.NormalFan.vertices;
+                L = obj.NormalFan.length;
                 % Projection with the normal fan
-                val=projection3D(val,obj.Normals,con_fac,con_edg,con_ver,fac,edg,vert);
+                val=projection3D(val,obj.Normals,con_fac,con_edg,con_ver,fac,edg,vert,L);
             end
         end
         
@@ -551,15 +563,15 @@ end
 
 %% Projection function
 
-function [rectangles,triangles,edges,vertices]=normalFan2D(v,epsProj)
+function [rectangles,triangles,edges,vertices]=normalFan2D(v,epsProj,L)
 % [rectangles,triangles,edges,vertices]=normalFan2D(v,epsProj)
 %
 % returns a list of triangles and rectangles that constitute the normal
 % fan of the polygon (which must be convex), as well as the associated 
 % edges and points.
 
-L = 1000;
 if nargin<=1 || isempty(epsProj),  epsProj=1e-5; end
+if nargin<=2 || isempty(L),  L=1000; end
 
 nv=length(v);
 v=v-mean(v,1);
@@ -603,7 +615,7 @@ triangles{1}=polyshape(p(:,1),p(:,2));
 %plot(triangles{1},'facecolor','r')
 end
 
-function [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj)
+function [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj,L)
 % [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj)
 %
 % returns a list of prisms, roofs, cones that constitute the normal
@@ -611,6 +623,7 @@ function [prisms,roofs,cones,facets,edges,vertices]=normalFan3D(domain,epsProj)
 % facets, edges and points.
 
 if nargin<=1 || isempty(epsProj),  epsProj=1e-5; end
+if nargin<=2 || isempty(L),  L=1000; end
 
 v=domain.Vertices;
 v=v-mean(v,1);
@@ -620,8 +633,6 @@ edges=domain.Edges;
 facets=domain.Facets;
 vertices=v;
 normals=domain.Normals;
-
-L=1000;
 
 nv=length(v); ne=length(edges); nf=length(facets);
 
@@ -672,10 +683,16 @@ end
 
 end
 
-function rho=projection2D(rho,triangles,rectangles,vertices,edges)
+function rho=projection2D(rho,triangles,rectangles,vertices,edges,L)
 % rho=projection2D(rho,triangles,rectangles,vertices,edges)
 %
 % returns projected values onto a convex 2D polygon.
+
+% 0) radial projection to avoid lying outside the normal fan
+    R = vecnorm(rho,2,2);
+    coeff = 0.49;
+    indL = R>(L*coeff);
+    rho(indL,:) = rho(indL,:) .* (L*coeff./R(indL));
 
     % 1) projection on vertices (triangles in the normal fan)
 N=length(triangles);
@@ -719,7 +736,13 @@ invb=[b(1,1), b(2,1); b(1,2), b(2,2)]./detb;
 ProjPoint = -mult(invb,a);
 end
 
-function rho=projection3D(rho,un,prismes,toits,cones,facets,edges,vertices)
+function rho=projection3D(rho,un,prismes,toits,cones,facets,edges,vertices,L)
+
+% 0) radial projection to avoid lying outside the normal fan
+    R = vecnorm(rho,2,2);
+    coeff = 0.32;
+    indL = R>(L*coeff);
+    rho(indL,:) = rho(indL,:) .* (L*coeff./R(indL));
 
     % 1) projection on vertices (cones)
 N=length(cones);

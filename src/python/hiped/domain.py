@@ -5,10 +5,7 @@ Created on Tue Jul 30 15:40:40 2024
 @author: tcherriere
 """
 
-from .utils import mult, t, array2gf, gf2array
-
-from ngsolve import GridFunction
-
+from .utils import mult, t
 
 from copy import deepcopy
 import numpy as np
@@ -19,7 +16,7 @@ from  matplotlib.tri import Triangulation
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 class Domain:
-    def __init__(self, domain_type, radius=1, lengthNormalFan = 1000, epsProj=1e-5):
+    def __init__(self, domain_type, radius=1, lengthNormalFan = 1, epsProj=1e-5):
         
         self.Vertices = None
         self.Edges = None
@@ -259,28 +256,20 @@ class Domain:
 
 
     def projection(self,rho):
-        flagGF = False
-        if isinstance(rho, list):
-            if isinstance(rho[0], GridFunction):
-                flagGF = True
-                rho , space= gf2array(rho)
-            
         if self.Dimension == 0:
-            rhoProj =  np.ones(rho.shape)
+            return np.ones(rho.shape)
         
         elif self.Dimension == 1:
             rhoProj = rho.copy()
             mi, ma = np.min(self.Vertices), np.max(self.Vertices)
             rhoProj[rho < mi] = mi
             rhoProj[rho > ma] = ma
+            return rhoProj
         
         elif self.Dimension == 2:
-            rhoProj =  projection2D(rho, self)
+            return projection2D(rho, self)
         elif self.Dimension == 3:
-            rhoProj =  projection3D(rho, self)
-        if flagGF:
-            rhoProj = array2gf(rhoProj,space)
-        return rhoProj
+            return projection3D(rho, self)
 
     def printInfo(self):
         print(f"Dimension : {self.Dimension}")
@@ -362,7 +351,7 @@ class Domain:
                 # decomposition in triangles
                 npp = len(pointsFacets)
                 pTriangle = [[vc, xyzFacet[i], xyzFacet[ (i+1) % npp]] for i in range(npp)]
-                #pointsTri = np.zeros((0,3))
+                pointsTri = np.zeros((0,3))
                 
                 for pp in pTriangle: # "mesh" every elementary triangles of the facet
                     
@@ -379,7 +368,7 @@ class Domain:
                     pointsTriLocal = Ref2Facet(ptRef)
                     p3dc = ax.plot_trisurf(pointsTriLocal[0], pointsTriLocal[1], pointsTriLocal[2],
                                     triangles=tri.triangles,  color = color, alpha = alpha)
-            #nn = self.Vertices.shape[0]
+            nn = self.Vertices.shape[0]
             e = [np.vstack([vCentered[self.Edges[i][0]], 
                                       vCentered[self.Edges[i][1]]]) for i in range(len(self.Edges)) ]
             line_collection = Line3DCollection(e, colors='k', linewidths=linewidth)
@@ -416,22 +405,24 @@ Normal fan (for projection)
 '''
 
 class NormalFan:
-    def __init__(self, domain, length = 100, epsProj = 1e-5):
+    def __init__(self, domain, length = 1, epsProj = 1e-5):
         self.EpsProj = epsProj
         dProj = deepcopy(domain)
         dProj.Vertices = dProj.Vertices * (1-epsProj)
-        self.DomainProj = dProj
         self.Length = length
         if domain.Dimension == 2:
             rectangles, triangles = normalFan2D(dProj, length)
             self.ConesEdges = rectangles
             self.ConesVertices = triangles
             self.ConesFacets = []
+            self.Polygon = Simple2Dpolygon(dProj.Vertices)
         elif domain.Dimension == 3:
             prismFacet, roofsEdges, conesVertices = normalFan3D(dProj, length)
             self.ConesEdges = roofsEdges
             self.ConesVertices = conesVertices
             self.ConesFacets = prismFacet
+            pf = np.vstack([dProj.Vertices[np.abs(dProj.Facets[i][0])-1, :] for i in range(len(dProj.Facets))])
+            self.Polygon = Simple3Dpolyedron(dProj.Vertices, normals = dProj.Normals, pointsFacets= pf)
          
     def plot(self, alpha=0.1):
         plt.figure()
@@ -446,17 +437,12 @@ class NormalFan:
             
         for coneV in self.ConesVertices:
             coneV.plot(color = [1,0,0], alpha = alpha)
-        
-        if len(self.ConesFacets)==0:
-            plt.axis([-4,4,-4,4]) 
-        else:
-            plt.axis([-4,4,-4,4,-4,4]) 
         plt.gca().set_aspect('equal', 'box')
         plt.axis('off')
         plt.show()
         
     
-def normalFan2D(domain, length = 100):
+def normalFan2D(domain, length = 1):
     rectangles = []
     triangles = []
     n = domain.Vertices.shape[0]
@@ -481,7 +467,7 @@ def normalFan2D(domain, length = 100):
     return rectangles, triangles
 
 
-def normalFan3D(domain, length = 100):
+def normalFan3D(domain, length = 1):
     prismFacet = []
     roofsEdges = []
     conesVertices = []
@@ -495,7 +481,7 @@ def normalFan3D(domain, length = 100):
     for i in range(nf):
         nodesF = [e[abs(j)-1][0]*(j>0) + e[abs(j)-1][1]*(j<0) for j in f[i]]
         base1=v[nodesF]
-        prismFacet.append(prism3DBaseNormal(base1, un[i], length))
+        prismFacet.append(prism3D(base1, un[i]*length))
         
     # 2) Edges
     for i in range(ne):
@@ -506,7 +492,7 @@ def normalFan3D(domain, length = 100):
         ve2 = v[nodesE[1]]
         base1=np.vstack([ve1, ve1 + un1 * length, ve1+ un2*length])
         base2=np.vstack([ve2, ve2 + un1 * length, ve2+ un2*length])
-        roofsEdges.append(prism3DBaseBase(base1, base2))
+        roofsEdges.append(prism3D(base1, base2))
         
     # 3) Vertices
     for i in range(nv):
@@ -521,9 +507,17 @@ Utilities for defining the normal fan
 '''
 
 class Simple2Dpolygon:
-    def __init__(self, vertices):
+    def __init__(self, vertices): # should be in trigonometric order
         self.Vertices = np.array(vertices)
-        self.Area = self.computeArea(np.mean(vertices, axis = 0))
+        vn =  np.vstack([self.Vertices[1:,:]-self.Vertices[:-1,:],self.Vertices[0,:]-self.Vertices[-1,:]])
+        R = np.array([[0, 1],[-1, 0]])
+        self.Normals = vn @ R.T
+        vCenter = np.mean(self.Vertices, axis = 0)
+        self.Area = self.computeArea(vCenter)
+        # check orientation
+        for i in range(len(self.Normals)):
+            self.Normals[i] = - self.Normals[i] * np.sum( self.Normals[i] * (vCenter-self.Vertices[i]))
+            self.Normals[i] = self.Normals[i] / np.linalg.norm(self.Normals[i])
         
     def computeArea(self, pTest):
         # pTest : Nx2 array
@@ -534,27 +528,42 @@ class Simple2Dpolygon:
             p1 = self.Vertices[i]
             p2 = self.Vertices[(i+1) % n]
             area.append(np.abs(np.cross(p1-pTest,p2-pTest, axis = 1)))
-        area = np.sort(np.array(area), axis = 0)
+        area = np.sort(np.array(area), axis = 0) # slow but prevents roundoff errors
         area=np.sum(area, axis = 0)
         return area / 2
+        
+    def isInsideOld(self, pTest, tol = 1e-10): # slow
+        vol = self.computeArea(pTest)
+        return vol <= (self.Volume * (1+tol)) 
     
-    def isInside(self, pTest, tol = 1e-10):
-        area = self.computeArea(pTest)
-        return area <= (self.Area * (1+tol))
-    
+    def isInside(self, pTest, inf = None, tol = 1e-12): # recommended
+        pTest = (pTest.T).reshape(1,2,-1)
+        vec = pTest - self.Vertices.reshape(-1,2,1)
+        un = self.Normals.reshape(-1,2,1)
+        if inf is not None:
+            vec = np.delete(vec, inf, axis = 0)
+            un =  np.delete(un, inf, axis = 0)
+        dot = np.sum(np.sum(vec*un , axis = 1) > -tol, axis = 0).flatten()
+        return dot == 0
+        
     def plot(self, color = 'r', alpha = 0.5):
         sequence = np.concatenate([np.arange(0,self.Vertices.shape[0]),[0]], axis = 0)
         plt.plot(self.Vertices[sequence,0],self.Vertices[sequence,1],'-ko')
         polygon = Polygon(self.Vertices, closed=True, color = color, alpha = alpha)
         plt.gca().add_patch(polygon)
-            
+ 
+        
+
 class Simple3Dpolyedron:
-    def __init__(self, vertices, meshSurf = None, vol = None):
+    def __init__(self, vertices, normals = None, meshSurf = None, pointsFacets = None, vol = None):
         self.Vertices = np.array(vertices)
         self.MeshSurf = meshSurf
+        self.Normals = normals
+        self.PointsFacets = pointsFacets
         self.Volume = vol
     
-    def plot(self, color = [0,0,0], alpha = 1):
+    def plot(self, color = [0,0,0], alpha = 0.5):
+        if "3d" not in str(type(plt.gca())): plt.close() ; plt.figure();  plt.gcf().add_subplot(projection='3d')
         pts = self.Vertices
         plt.gca().plot_trisurf(pts[:,0], pts[:,1], pts[:,2],
                         triangles=self.MeshSurf, linewidth=0.5,  color = color + [alpha])
@@ -569,36 +578,30 @@ class Simple3Dpolyedron:
             p2 = self.Vertices[self.MeshSurf[i][1]]
             p3 = self.Vertices[self.MeshSurf[i][2]]
             vol.append(np.abs(np.sum(np.cross(p1-pTest, p2-pTest, axis = 1) * (p3-pTest), axis = 1)))
-        vol = np.sort(np.array(vol), axis = 0)
+        vol = np.sort(np.array(vol), axis = 0) # slow but prevents roundoff errors
         vol=np.sum(vol, axis = 0)
         return vol / 6
     
-    def isInside(self, pTest, tol = 1e-10):
+    def isInsideOld(self, pTest, tol = 1e-10): # slow
         vol = self.computeVol(pTest)
         return vol <= (self.Volume * (1+tol)) 
-
-def prism3DBaseNormal(base1, un, length = 100):
-    # the vertices in "base" should be ordered
-    nb = base1.shape[0]
-    base1Center = np.mean(base1,axis = 0, keepdims=True)
-    base2 = base1 + un*length
-    base2Center = base1Center + un*length
-    vertices = np.concatenate([base1, base1Center,base2,base2Center], axis = 0)
     
-    meshSurf1 = [[i, (i+1) % nb, nb] for i in range(nb) ]
-    meshSurf2 = [[nb+1+ i, nb+1 + ((i+1) % nb), 2*nb+1] for i in range(nb) ]
-    meshSurfLat1 = [[i, (i+1) % nb, nb+1 + i,] for i in range(nb) ]
-    meshSurfLat2 = [[nb+1+ i, nb+1 + ((i+1) % nb) , (i+1) % nb] for i in range(nb) ]
+    def isInside(self, pTest, inf = None, tol = 1e-12): # recommended
+        pTest = (pTest.T).reshape(1,3,-1)
+        vec = pTest - self.PointsFacets.reshape(-1,3,1)
+        un = self.Normals.reshape(-1,3,1)
+        if inf is not None:
+            vec = np.delete(vec, inf, axis = 0)
+            un =  np.delete(un, inf, axis = 0)
+        dot = np.sum(np.sum(vec*un , axis = 1) > -tol, axis = 0).flatten()
+        return dot == 0
 
-    meshSurf = meshSurf1 + meshSurf2+ meshSurfLat1 + meshSurfLat2
-    
-    prism = Simple3Dpolyedron(vertices, meshSurf = meshSurf)
-    prism.Volume = prism.computeVol(np.mean(vertices, axis = 0))
-    return prism
 
-def prism3DBaseBase(base1, base2):
+def prism3D(base1, base2orExtrude):
     # the vertices in "base" should be ordered and consistent
     nb = base1.shape[0]
+    if base2orExtrude.size == 3: base2 = base1 + base2orExtrude.reshape(1,3)
+    else : base2 = base2orExtrude
     base1Center = np.mean(base1,axis = 0, keepdims=True)
     base2Center = np.mean(base2,axis = 0, keepdims=True)
     vertices = np.concatenate([base1, base1Center,base2,base2Center], axis = 0)
@@ -612,10 +615,29 @@ def prism3DBaseBase(base1, base2):
     
     prism = Simple3Dpolyedron(vertices, meshSurf = meshSurf)
     prism.Volume = prism.computeVol(np.mean(vertices, axis = 0))
+    
+    ## for efficient isInside test
+    unBase1 = np.cross(base1[1]-base1[0], base1[2]-base1[0])
+    unBase2 = np.cross(base2[1]-base2[0], base2[2]-base2[0])
+    unBase1 = - unBase1 * np.sum( unBase1 * (base2[0]-base1[0]))
+    unBase2 = - unBase2 * np.sum( unBase2 * (base1[0]-base2[0]))
+    unBase1 = unBase1 / np.linalg.norm(unBase1)
+    unBase2 = unBase2 / np.linalg.norm(unBase2)
+    pfBase1, pfBase2 = base1[0],  base2[0]
+    unSide = [np.cross(base2[i]-base1[i], base1[(i+1)%nb]-base1[i]) for i in range(nb) ]
+    pfSide = base1
+    vCenter = np.mean(vertices, axis = 0)
+    # check orientations
+    for i in range(len(unSide)):
+        unSide[i] = - unSide[i] * np.sum( unSide[i] * (vCenter-base1[i]))
+        unSide[i] = unSide[i] / np.linalg.norm(unSide[i])
+    prism.Normals = np.vstack([unBase1, *unSide, unBase2])
+    prism.PointsFacets = np.vstack([pfBase1, *pfSide, pfBase2])
     return prism
 
+
 def pyramid3D(base, top):
-    # the vertices in "base" should be ordered
+    # the vertices in "base" should be ordered (not necessarily in trigonometric order)
     nb = base.shape[0]
     baseCenter = np.mean(base,axis = 0, keepdims=True)
     vertices = np.concatenate([base, baseCenter, top], axis = 0)
@@ -626,6 +648,23 @@ def pyramid3D(base, top):
     
     pyramid = Simple3Dpolyedron(vertices, meshSurf = meshSurf)
     pyramid.Volume = pyramid.computeVol(np.mean(vertices, axis = 0))
+    
+    ## for efficient isInside test
+    unBase = np.cross(base[1]-base[0], base[2]-base[0])
+    unBase = - unBase * np.sum( unBase * (top-base[0]))
+    unBase = unBase / np.linalg.norm(unBase)
+    pfBase = base[0]
+    unTop = [np.cross(top-base[(i+1)%nb], base[i]-base[(i+1)%nb]) for i in range(nb) ]
+    pfTop = base
+    # check orientations
+    vCenter = np.mean(vertices, axis = 0)
+    for i in range(len(unTop)):
+        unTop[i] = - unTop[i] * np.sum( unTop[i] * (vCenter-base[i]))
+        unTop[i] = unTop[i] / np.linalg.norm(unTop[i])
+    
+    pyramid.Normals = np.vstack([*unTop, unBase])
+    pyramid.PointsFacets =  np.vstack([pfTop, pfBase])
+    
     return pyramid
 
 '''
@@ -658,27 +697,25 @@ def projection2D(rho, domain):
     """
     Returns projected values onto a convex 2D polygon.
     """
-    dProj = domain.NormalFan.DomainProj
-    nv = dProj.Vertices.shape[0]
-    nr = rho.shape[0]
+    
     rhoProj = rho.copy()
-
-    # 0) reduce the radius of points outside normalFan (supposed to be far away)
-    
-    R = np.linalg.norm(rho, axis = 1)
-    L = domain.NormalFan.Length
-    coeff = 0.45
-    indL = R>(L*coeff)
-    rhoProj[indL,:] = rhoProj[indL,:] * (L/R[indL]*coeff).reshape(-1,1)
-    
-    # 1) projection on vertices (triangles in the normal fan)
-    dProj = domain.NormalFan.DomainProj
+    dProj = domain.NormalFan.Polygon
     nv = dProj.Vertices.shape[0]
     nr = rho.shape[0]
     indToDo = np.full(nr, True)
+
+    # 0) remove points inside polygon
+    
+    inPoly = dProj.isInside(rhoProj)
+    index = np.full(nr, False)
+    index[indToDo] = inPoly
+    indToDo = indToDo & ~index
+    
+    # 1) projection on vertices (triangles in the normal fan)
+
     for i in range(nv):
         triangle = domain.NormalFan.ConesVertices[i]
-        inTri= triangle.isInside(rhoProj[indToDo,:])
+        inTri= triangle.isInside(rhoProj[indToDo,:], inf = 1 )
         index = np.full(nr, False)
         index[indToDo] = inTri
         indToDo = indToDo & ~index
@@ -687,7 +724,7 @@ def projection2D(rho, domain):
     # 2) projection on edges (rectangles in the normal fan)
     for i in range(nv):
         rectangle = domain.NormalFan.ConesEdges[i]
-        inRect= rectangle.isInside(rhoProj[indToDo,:])
+        inRect= rectangle.isInside(rhoProj[indToDo,:], inf = 2)
         edge = np.vstack([dProj.Vertices[i],dProj.Vertices[(i+1)%nv]])
         index = np.full(nr, False)
         index[indToDo] = inRect
@@ -726,24 +763,23 @@ def projection3D(rho, domain):
     """
     Returns projected values onto a convex 3D polyedron
     """
-    dProj = domain.NormalFan.DomainProj
+    dProj = domain.NormalFan.Polygon
     nr = rho.shape[0]
     indToDo = np.full(nr, True)
     rhoProj = rho.copy()
     #eps = domain.NormalFan.EpsProj
     
-    # 0) reduce the radius of points outside normalFan (supposed to be far away)
+    # 0) remove points inside polyedron
     
-    R = np.linalg.norm(rho, axis = 1)
-    L = domain.NormalFan.Length
-    coeff = 0.3
-    indL = R>(L*coeff)
-    rhoProj[indL,:] = rhoProj[indL,:] * (L/R[indL]*coeff).reshape(-1,1) # tetra
+    inPoly = dProj.isInside(rhoProj)
+    index = np.full(nr, False)
+    index[indToDo] = inPoly
+    indToDo = indToDo & ~index
 
     # 1) projection on vertices (cones in the normal fan)
     cv = domain.NormalFan.ConesVertices
     for i in range(len(cv)):
-        inTri= cv[i].isInside(rhoProj[indToDo,:])
+        inTri= cv[i].isInside(rhoProj[indToDo,:], inf = -1)
         index = np.full(nr, False)
         index[indToDo] = inTri
         indToDo = indToDo & ~index
@@ -752,7 +788,7 @@ def projection3D(rho, domain):
     # 2) projection on edges (roofs in the normal fan)
     ce = domain.NormalFan.ConesEdges
     for i in range(len(ce)):
-        inRect= ce[i].isInside(rhoProj[indToDo,:])
+        inRect= ce[i].isInside(rhoProj[indToDo,:], inf = 2)
         index = np.full(nr, False)
         index[indToDo] = inRect
         indToDo = indToDo & ~index
@@ -763,7 +799,7 @@ def projection3D(rho, domain):
      # 3) projection on facets (prisms in the normal fan)
     cf = domain.NormalFan.ConesFacets
     for i in range(len(cf)):
-        inPrism= cf[i].isInside(rhoProj[indToDo,:])
+        inPrism= cf[i].isInside(rhoProj[indToDo,:], inf = -1)
         index = np.full(nr, False)
         index[indToDo] = inPrism
         indToDo = indToDo & ~index
@@ -779,6 +815,7 @@ def projection3D(rho, domain):
     #plt.gca().scatter(rhoProj[indToDo,0],rhoProj[indToDo,1],rhoProj[indToDo,2],s = 100)
     #plt.plot(indToDo)
     return rhoProj
+
 
 
 #Domain(3).plot()

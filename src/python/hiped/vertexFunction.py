@@ -1,5 +1,7 @@
 from .utils import mult, t
 
+from ngsolve import GridFunction, CoefficientFunction
+
 from copy import copy, deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,7 +38,7 @@ class VertexFunction:
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-    def __init__(self, label, f, dfdu, dimInput = 1 , dimOutput = 1):
+    def __init__(self, label, f, dfdu, dimInput = 1 , dimOutput = 1, flagNGSolve = False):
         
         # Checks
         assert isinstance(label, str), "label should be a string"
@@ -53,8 +55,13 @@ class VertexFunction:
         self.DimOutput = dimOutput
         self.FlagParExp = False
         self.FlagParMult = False
+        self.flagNGSolve = flagNGSolve
+        
     def eval(self, u):
-        return self.Expression(u)
+        result = self.Expression(u)
+        #if isinstance(u, (CoefficientFunction, GridFunction)):
+        #    result = [result[i] for i in range(self.DimOutput)]
+        return result
     
     def evald(self, u):
         return self.Derivative(u)
@@ -161,14 +168,19 @@ class VertexFunction:
                 
             f, g= deepcopy(self.Expression), deepcopy(other.Expression)
             dfdu, dgdu =  deepcopy(self.Derivative), deepcopy(other.Derivative)
-            result.Expression = lambda u : f(u) * g(u)
-            result.Derivative = lambda u : dfdu(u)*g(u) + dgdu(u)*f(u)
+            result.DimOutput = np.broadcast(np.zeros(dimOut1), np.zeros(dimOut2)).shape
 
+            if self.flagNGSolve:
+                pass # TODO !!
+            else:
+                result.Expression = lambda u : f(u) * g(u)
+                result.Derivative = lambda u : dfdu(u)*g(u) + dgdu(u)*f(u)
+                
             if result.FlagParMult and other.FlagParMult : result.Label = "(" + self.Label + ") * (" + other.Label + ")"
             elif result.FlagParMult and not other.FlagParMult : result.Label = "(" + self.Label + ") * " + other.Label
             elif not result.FlagParMult and other.FlagParMult : result.Label =  self.Label + " * (" + other.Label + ")"
             else :  result.Label =  self.Label + " * " + other.Label
-            result.DimOutput = np.broadcast(np.zeros(dimOut1), np.zeros(dimOut2)).shape
+                
         result.FlagParExp = True
         result.FlagParMult = False
         return result

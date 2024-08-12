@@ -5,18 +5,20 @@ Created on Sat Aug  3 18:51:38 2024
 @author: tcherriere
 """
 
-from .utils import t, mult
+from .utils import t, mult, array2gf, gf2array
 from .vertexFunction import VertexFunction
 from .domain import *
 from .penalization import *
 from .vizualization import *
+
+from ngsolve import GridFunction, CoefficientFunction
 
 import numpy as np
 import matplotlib.pyplot as plt
 from  matplotlib.tri import Triangulation
 import matplotlib.colors as mcolors
 from scipy.optimize import minimize
-from copy import deepcopy
+from copy import deepcopy, copy
 
 class Interpolation:
     '''
@@ -104,25 +106,39 @@ class Interpolation:
         else:
             raise Exception("The number of penalization's elements does not match the number of domain's vertices")
     
-    def setInitialVariable(self, nVariables, typeInit = "zero", radius = 1, x00 = dict()):
+    def setInitialVariable(self, nVariables = 10, typeInit = "zero", radius = 1, x00 = dict(), NGSpace = None):
         if x00 == dict(): x0 = x00.copy() 
         else: x0 = x00
         assert self.Label not in x0.keys(), "Non-unique interpolation labels"
         dim = self.ShapeFunction.Domain.Dimension
         
+        if NGSpace is not None: nVariables = len(GridFunction(NGSpace).vec.FV())
+        
         if typeInit.lower() in ["zero", "zeros", "z", "null", "center"]:
             x0[self.Label] = np.zeros((nVariables, dim))
+            if NGSpace is not None:
+                x0[self.Label] = [GridFunction(NGSpace) for i in range(dim)]
             
         elif typeInit.lower() in ["rand", "random", "r"]:
             if dim == 0:
                 x0[self.Label] = np.zeros((nVariables, dim))
+                if NGSpace is not None:
+                    x0[self.Label] = [GridFunction(NGSpace)]
             elif dim == 1:
                 x0[self.Label] = radius*(np.random.rand(nVariables, dim)-0.5)
+                if NGSpace is not None:
+                    x0[self.Label] = [GridFunction(NGSpace)]
+                    x0[self.Label][0].vec.FV().NumPy()[:] = radius*(np.random.rand(nVariables, dim)-0.5)
             elif dim == 2:
                 R = radius*np.random.rand(nVariables)
                 th = np.random.rand(nVariables)*2*np.pi
                 x, y = R * np.cos(th), R * np.sin(th)
                 x0[self.Label] = np.array([x,y]).T
+                if NGSpace is not None:
+                    xyz = [x,y]
+                    x0[self.Label] = [GridFunction(NGSpace) for i in range(dim)]
+                    for i in range(len(x0[self.Label])):
+                        x0[self.Label][i].vec.FV().NumPy()[:] = xyz[i]
             elif dim == 3:
                 R = radius*np.random.rand(nVariables)
                 th = np.random.rand(nVariables)*2*np.pi
@@ -131,7 +147,11 @@ class Interpolation:
                 y = R * np.cos(th)* np.sin(phi)
                 z = R * np.sin(th)
                 x0[self.Label] = np.array([x,y,z]).T
-        
+                if NGSpace is not None:
+                    xyz = [x,y,z]
+                    x0[self.Label] = [GridFunction(NGSpace) for i in range(dim)]
+                    for i in range(len(x0[self.Label])):
+                        x0[self.Label][i].vec.FV().NumPy()[:] = xyz[i]
         for child in self.Children:
             if isinstance(child,Interpolation):
                 x0 = child.setInitialVariable(nVariables, typeInit, radius, x0)
@@ -139,8 +159,11 @@ class Interpolation:
         return x0
     
     
-    def projection(self, x, xproj = None):
-        if xproj is None : xproj = x
+    def projection(self, x, xproj = None, copyFlag = False, deepcopyFlag = False):
+        if xproj is None :
+            if deepcopyFlag : xproj = deepcopy(x)
+            elif copyFlag : xproj = copy(x)
+            else : xproj =x
         xproj[self.Label] = self.ShapeFunction.Domain.projection(x[self.Label])
         for child in self.Children:
             if isinstance(child, Interpolation):
@@ -152,7 +175,19 @@ class Interpolation:
     '''
     
     def evalBasisFunction(self, x, w=dict(), dwdx=dict()):
-        w[self.Label], dwdx[self.Label] = self.ShapeFunction.eval(x[self.Label])
+        val = x[self.Label]
+        flagNGsolve = False
+        if isinstance(val, list): #  transformation to NumPy array if NGsolve
+            flagNGsolve = True
+            val, space = gf2array(val)
+            
+        w[self.Label], dwdx[self.Label] = self.ShapeFunction.eval(val)
+        
+        if flagNGsolve: # transformation to GridFunction if NGSolve
+            w[self.Label] = array2gf(w[self.Label], space)
+            w[self.Label] = [l[0] for l in w[self.Label]]
+            dwdx[self.Label] = array2gf(dwdx[self.Label], space)
+            
         for child in self.Children:
             if isinstance(child, Interpolation):
                 w, dwdx = child.evalBasisFunction(x, w, dwdx)
@@ -160,94 +195,203 @@ class Interpolation:
         return w, dwdx
     
     
-    def eval(self, x, u, w_=dict()):
+    def eval(self, x, u, w_=dict(), flagCompil = True):
         # x = dict
         # u = dimInput x 1 x N
+        
         if len(w_) == 0: w, _ = self.evalBasisFunction(x)
         else: w = w_.copy()
         
-        if len(u.shape) < 3 : u= u.T.reshape(self.DimInput,1,-1)
+        if isinstance(x[self.Label], list): # NGsolve
+            result = self.__eval_NGsolve(x, u, w, flagCompil)
+        else:
         
-        sz = u.shape[2]
+            if len(u.shape) < 3 : u= u.T.reshape(self.DimInput,1,-1)
+            
+            sz = u.shape[2]
+            nChildren = len(self.Children)
+    
+            # 1) computation of the children
+            coeff = np.zeros((self.Children[0].DimOutput,1, sz, nChildren));
+            
+            for i in range(nChildren):
+                child = self.Children[i]
+                if isinstance(child, Interpolation):
+                    coeff[:,:,:,i] = child.eval(x, u, w)
+                else:
+                    coeff[:,:,:,i] = child.eval(u)
+        
+            # 2) multiplication by the shape functions
+            val = np.zeros((1,1,sz,nChildren))
+            for i in range(nChildren):
+                val[:,:,:,i] = self.Penalization[i].eval(w[self.Label][i,:,:])
+            
+            
+            # 3) Result
+            result = np.sum(coeff * val, 3)
+        return result
+    
+    
+    def __eval_NGsolve(self, x, u, w, flagCompil = True):
+        nChildren = len(self.Children)
+        
+        # 1) computation of the children
+        
+        coeff = [None  for i in range(nChildren)]
+        for i in range(nChildren):
+            child = self.Children[i]
+            if isinstance(child, Interpolation):
+                coeff[i] = child.__eval_NGsolve(x, u, w)
+            else:
+                coeff[i] = child.eval(u)
+        
+        # 2) multiplication by the shape functions
+        
+        x, space = gf2array(w[self.Label])
+        valGf = [GridFunction(space) for i in range(nChildren)]
+        for i in range(nChildren):
+            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
+            
+        
+        # 3) Result
+        result = CoefficientFunction(0)
+        for i in range(nChildren):
+            result = valGf[i]*coeff[i] + result
+        if flagCompil: return result.Compile()
+        else : return result
+
+    def evaldu(self, x, u, w_=dict(), flagCompil = True):
+        if len(w_) == 0: w, _ = self.evalBasisFunction(x)
+        else: w = w_.copy()
+        
+        if isinstance(x[self.Label], list): # NGsolve
+            result = self.__evaldu_NGsolve(x, u, w, flagCompil)
+        else:
+        
+            if len(u.shape) < 3 : u = u= u.T.reshape(self.DimInput,1,-1)
+            
+            sz = u.shape[2]
+            nChildren = len(self.Children)
+            d1 = self.Children[0].DimOutput
+            d2 = self.Children[0].DimInput
+            
+            # 1) computation of the derivative of the children
+            coeffd = np.zeros((d1,d2, sz, nChildren))
+            for i in range(nChildren):
+                child = self.Children[i]
+                if isinstance(child, Interpolation):
+                    coeffd[:,:,:,i] = child.evaldu(x, u, w)
+                else:
+                    coeffd[:,:,:,i] = child.evald(u)
+                    
+            # 2) multiplication by the shape functions
+            Pw=np.zeros((1,1,sz,nChildren))
+            for i in range(nChildren):
+                Pw[:,:,:,i]=self.Penalization[i].eval(w[self.Label][i,:,:])
+            
+            # 3) result
+            result = np.sum(coeffd*Pw, 3)
+        return result
+    
+    def __evaldu_NGsolve(self, x, u, w, flagCompil = True):
         nChildren = len(self.Children)
 
         # 1) computation of the children
-        coeff = np.zeros((self.Children[0].DimOutput,1, sz, nChildren));
-        
-        for i in range(nChildren):
-            child = self.Children[i]
-            if isinstance(child, Interpolation):
-                coeff[:,:,:,i] = child.eval(x, u, w)
-            else:
-                coeff[:,:,:,i] = child.eval(u)
-    
-        # 2) multiplication by the shape functions
-        val = np.zeros((1,1,sz,nChildren))
-        for i in range(nChildren):
-            val[:,:,:,i] = self.Penalization[i].eval(w[self.Label][i,:,:])
-        
-        
-        # 3) Result
-        return np.sum(coeff * val, 3)
-        
 
-    def evaldu(self, x, u, w_=dict()):
-        if len(w_) == 0: w, _ = self.evalBasisFunction(x)
-        else: w = w_.copy()
-        
-        if len(u.shape) < 3 : u = u= u.T.reshape(self.DimInput,1,-1)
-        
-        sz = u.shape[2]
-        nChildren = len(self.Children)
-        d1 = self.Children[0].DimOutput
-        d2 = self.Children[0].DimInput
-        
-        # 1) computation of the derivative of the children
-        coeffd = np.zeros((d1,d2, sz, nChildren))
+        coeff = [None  for i in range(nChildren)]
         for i in range(nChildren):
             child = self.Children[i]
             if isinstance(child, Interpolation):
-                coeffd[:,:,:,i] = child.evaldu(x, u, w)
+                coeff[i] = child.__evaldu_NGsolve(x, u, w)
             else:
-                coeffd[:,:,:,i] = child.evald(u)
-                
-        # 2) multiplication by the shape functions
-        Pw=np.zeros((1,1,sz,nChildren))
-        for i in range(nChildren):
-            Pw[:,:,:,i]=self.Penalization[i].eval(w[self.Label][i,:,:])
+                coeff[i] = child.evald(u)
         
-        # 3) result
-        return np.sum(coeffd*Pw, 3)
+        # 2) multiplication by the shape functions
+        
+        x, space = gf2array(w[self.Label])
+        valGf = [GridFunction(space) for i in range(nChildren)]
+        for i in range(nChildren):
+            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
+            
+        # 3) Result
+        result = 0
+        for i in range(nChildren):
+            result = valGf[i]*coeff[i] + result
+        if flagCompil: return result.Compile()
+        else : return result
     
-    def evaldx(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict()):
+    def evaldx(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = True):
         result = result_.copy()
         if len(w_) == 0 or len(dwdx_) == 0 : w, dwdx = self.evalBasisFunction(x)
         else: w, dwdx = w_.copy(), dwdx_.copy()
         
-        if len(u.shape) < 3 : u= u.T.reshape(self.DimInput,1,-1)
-        sz = u.shape[2]
+        if isinstance(x[self.Label], list): # NGsolve
+            result = self.__evaldx_NGsolve(x, u, w, dwdx, k, result, flagCompil = True)
+        else:
+            if len(u.shape) < 3 : u= u.T.reshape(self.DimInput,1,-1)
+            sz = u.shape[2]
+            nChildren = len(self.Children)
+            d1 = self.Children[0].DimOutput
+            
+            # 1) computation of the values of the children
+            coeff = np.zeros((d1,1,sz,nChildren));
+            for i in range(nChildren):
+                child = self.Children[i]
+                if isinstance(child, Interpolation):
+                    coeff[:,:,:,i] = child.eval(x, u, w)
+                    Pw = self.Penalization[i].eval(w[self.Label][i,:,:])
+                    result = child.evaldx(x, u, w, dwdx, k*Pw, result)
+                else:
+                    coeff[:,:,:,i] = child.eval(u)
+                
+            # 2) computation of the derivative of the penalized shape functions
+        
+            dPdw = np.zeros((1,1,sz,nChildren))
+            for i in range(nChildren):
+                dPdw[0,0,:,i] = self.Penalization[i].evald(w[self.Label][i,0,:]);
+    
+            # 3) result
+            result[self.Label] = k * np.sum(coeff * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * dPdw, axis = 3)
+        return result
+    
+    def __evaldx_NGsolve(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = True):
+        result = result_.copy()
+        if len(w_) == 0 or len(dwdx_) == 0 : w, dwdx = self.evalBasisFunction(x)
+        else: w, dwdx = w_.copy(), dwdx_.copy()
+        
         nChildren = len(self.Children)
-        d1 = self.Children[0].DimOutput
         
         # 1) computation of the values of the children
-        coeff = np.zeros((d1,1,sz,nChildren));
+        coeff = [None for i in range(nChildren)]
+        x, space = gf2array(w[self.Label])
         for i in range(nChildren):
             child = self.Children[i]
             if isinstance(child, Interpolation):
-                coeff[:,:,:,i] = child.eval(x, u, w)
-                Pw = self.Penalization[i].eval(w[self.Label][i,:,:])
-                result = child.evaldx(x, u, w, dwdx, k*Pw, result)
+                coeff[i] = child.eval(x, u, w)
+                Pw =GridFunction(space)
+                Pw.vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
+                result = child.__evaldx_NGsolve(x, u, w, dwdx, k*Pw, result)
             else:
-                coeff[:,:,:,i] = child.eval(u)
+                coeff[i] = child.eval(u)
             
         # 2) computation of the derivative of the penalized shape functions
     
-        dPdw = np.zeros((1,1,sz,nChildren))
+        dPdw = [GridFunction(space) for i in range(nChildren)]
         for i in range(nChildren):
-            dPdw[0,0,:,i] = self.Penalization[i].evald(w[self.Label][i,0,:]);
+            dPdw[i].vec.FV().NumPy()[:] = self.Penalization[i].evald(x[:,i]);
 
         # 3) result
-        result[self.Label] = k * np.sum(coeff * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * dPdw, axis = 3)
+        dim = len(dwdx[self.Label][0])
+        s = [0 for i in range(dim)]
+        for i in range(nChildren):
+            for j in range(dim):
+                s[j] = dPdw[i] * dwdx[self.Label][i][j] * coeff[i] + s[j]
+                
+        result[self.Label] = [k * s[i] for i in range(dim)]
+        #result[self.Label] = k * np.sum(coeff * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * dPdw, axis = 3)
+        if flagCompil : 
+            for i in range(dim):
+                result[self.Label][i] = result[self.Label][i].Compile()
         return result
     
     ###################
@@ -278,12 +422,15 @@ class Interpolation:
         plt.axis("off")
            
     
-    def plot(self,x = dict(), level=0, offset = np.array([[0,0,0]]) ,
+    def plot(self, x = dict(), level=0, offset = np.array([[0,0,0]]) ,
              distance = lambda x: 0, direction = np.array([[0,0,0]]),
              cmap = plt.cm.Set1, linewidth = 1, indexPlot = "all"):
         if "3d" not in str(type(plt.gca())): plt.close() ; plt.figure();  plt.gcf().add_subplot(projection='3d')
         
         if len(x) == 0: xyz = np.zeros((0,3))
+        elif isinstance(x[self.Label] , list) : 
+            xyz = [gf.vec.FV().NumPy()[:].reshape(-1,1) for gf in x[self.Label]]
+            xyz = np.hstack([*xyz, np.zeros((xyz[0].shape[0],3))])[:,0:3]
         else: xyz = np.hstack([x[self.Label], np.zeros((x[self.Label].shape[0],3))])[:,0:3]
         
         xyz3d = np.ones(xyz.shape)*offset;
@@ -671,68 +818,3 @@ def wachspress3d(rho, domain3d):
     dwdrho = w * (R - phiR)
 
     return w, dwdrho
-
-#%%
-
-# dimInput = 2
-# dimOutput = 2
-
-# f1v = VertexFunction(label = "f1v", f = lambda u : u**2, dfdu = lambda u : 2*u * np.eye(2)[:,:,None], dimInput= dimInput, dimOutput = dimOutput)
-# f2v = VertexFunction("f2v", lambda u : mult(np.array([[1,2],[3,4]]), u), lambda u : np.array([[1,2],[3,4]])[:,:,None] * np.ones(u.shape), dimInput, dimOutput)
-# f3v = VertexFunction("f3v", lambda u : 0.1*u, lambda u : 0.1 * np.eye(2)[:,:,None] * np.ones(u.shape), dimInput, dimOutput)
-
-# fMat =  VertexFunction("f3v", lambda u : np.array([[1,2],[3,4]]).reshape(2,2,1)*np.ones(u.shape), lambda u : np.zeros(u.shape) * np.zeros((2,2,1)), dimInput, (2,2))
-# fConst =  VertexFunction("f3v", lambda u : np.ones((1,1,1))*np.ones(u.shape), lambda u : np.zeros((1,1,1))*np.zeros(u.shape), dimInput, 1)
-# fConst2 =  VertexFunction("f3v", lambda u : np.ones((2,1,1))*np.ones(u.shape), lambda u : np.zeros((2,2,1))*np.zeros(u.shape), dimInput, 2)
-
-# f4v = 3* f1v.innerProduct(f2v)*f3v
-# f5v = fMat @ f1v 
-
-
-# f1v = VertexFunction(label = "f1v", f = lambda u : u**2, dfdu = lambda u : 2*u * np.eye(2)[:,:,None], dimInput= dimInput, dimOutput = dimOutput)
-# f2v = VertexFunction("f2v", lambda u : mult(np.array([[1,2],[3,4]]), u), lambda u : np.array([[1,2],[3,4]])[:,:,None] * np.ones(u.shape), dimInput, dimOutput)
-# f3v = VertexFunction("f3v", lambda u : 0.1*u, lambda u : 0.1 * np.eye(2)[:,:,None] * np.ones(u.shape), dimInput, dimOutput)
-
-# fMat =  VertexFunction("fMat", lambda u : np.array([[1,2],[3,4]]).reshape(2,2,1)*np.ones(u.shape), lambda u : np.zeros(u.shape) * np.zeros((2,2,1)), dimInput, (2,2))
-# fConst =  VertexFunction("fConst", lambda u : np.ones((1,1,1))*np.ones(u.shape), lambda u : np.zeros((1,1,1))*np.zeros(u.shape), dimInput, 1)
-# fConst2 =  VertexFunction("fConst2", lambda u : np.ones((2,1,1))*np.ones(u.shape), lambda u : np.zeros((2,2,1))*np.zeros(u.shape), dimInput, 2)
-
-# f4v = fMat @ f1v * (f3v+f2v) / 2 # only multiplication by constant matrix is supported
-# print(f4v)
-# f5v = 3* f1v.innerProduct(f2v)*f3v 
-# print(f5v)
-
-# interpVector= Interpolation(domain = Domain(5), children = [f1v,f2v,f3v,f4v,f5v],
-#                                label = "interpScalar", penalization=Penalization("simp", 2))
-
-# x = interpVector.setInitialVariable(100,"rand",1)
-# x = interpVector.projection(x)
-# u = np.random.rand(2,1,100)
-# w, dwdx = interpVector.evalBasisFunction(x)
-# f = interpVector.eval(x, u, w) # value
-# dfdu =  interpVector.evaldu(x, u, w) # derivative w.r.t a
-# dfdx =  interpVector.evaldx(x, u, w, dwdx) # derivative w.r.t x
-
-
-# # derivative with respect to u
-# h = np.logspace(-8,-2,10) # test for 10 different h
-# resU = np.zeros((10,1,u.shape[2]))
-
-
-# for i in range(10):
-#     pert = h[i]*np.random.rand(*u.shape)
-#     fPerturbedu = interpVector.eval(x,u+pert)
-#     resU[i,0,:] = np.linalg.norm(fPerturbedu - (f + mult(dfdu,pert)), axis = 0)
-    
-# maxResU = np.max(resU, axis = 2); medResU = np.median(resU, axis = 2);
-
-# plt.figure()
-# plt.loglog(h, medResU,'-o', label =  "median of the residual")
-# plt.loglog(h, maxResU,'-o', label =  "maximum of the residual")
-# plt.loglog(h, h**2,'k--', label =  "expected decay $(h^2)$")
-
-# plt.legend(loc = "best"); plt.grid()
-# plt.xlabel("$h$"); plt.ylabel("Euclidian norm of Taylor remainder")
-# plt.title("Taylor remainder with respect to $u$")
-
-# plt.show()

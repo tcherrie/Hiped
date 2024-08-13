@@ -351,7 +351,7 @@ class Interpolation:
                 dPdw[0,0,:,i] = self.Penalization[i].evald(w[self.Label][i,0,:]);
     
             # 3) result
-            result[self.Label] = k * np.sum(coeff * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * dPdw, axis = 3)
+            result[self.Label] = k * np.sum(dPdw * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * coeff, axis = 3)
         return result
     
     def __evaldx_NGsolve(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = True):

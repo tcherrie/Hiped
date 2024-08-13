@@ -5,7 +5,10 @@ Created on Tue Jul 30 15:40:40 2024
 @author: tcherriere
 """
 
-from .utils import mult, t
+from .utils import mult, t, array2gf, gf2array
+
+from ngsolve import GridFunction
+
 
 from copy import deepcopy
 import numpy as np
@@ -256,20 +259,28 @@ class Domain:
 
 
     def projection(self,rho):
+        flagGF = False
+        if isinstance(rho, list):
+            if isinstance(rho[0], GridFunction):
+                flagGF = True
+                rho , space= gf2array(rho.copy())
+            
         if self.Dimension == 0:
-            return np.ones(rho.shape)
+            rhoProj =  np.ones(rho.shape)
         
         elif self.Dimension == 1:
             rhoProj = rho.copy()
             mi, ma = np.min(self.Vertices), np.max(self.Vertices)
             rhoProj[rho < mi] = mi
             rhoProj[rho > ma] = ma
-            return rhoProj
         
         elif self.Dimension == 2:
-            return projection2D(rho, self)
+            rhoProj =  projection2D(rho, self)
         elif self.Dimension == 3:
-            return projection3D(rho, self)
+            rhoProj =  projection3D(rho, self)
+        if flagGF:
+            rhoProj = array2gf(rhoProj,space)
+        return rhoProj
 
     def printInfo(self):
         print(f"Dimension : {self.Dimension}")
@@ -351,7 +362,7 @@ class Domain:
                 # decomposition in triangles
                 npp = len(pointsFacets)
                 pTriangle = [[vc, xyzFacet[i], xyzFacet[ (i+1) % npp]] for i in range(npp)]
-                pointsTri = np.zeros((0,3))
+                #pointsTri = np.zeros((0,3))
                 
                 for pp in pTriangle: # "mesh" every elementary triangles of the facet
                     
@@ -368,7 +379,7 @@ class Domain:
                     pointsTriLocal = Ref2Facet(ptRef)
                     p3dc = ax.plot_trisurf(pointsTriLocal[0], pointsTriLocal[1], pointsTriLocal[2],
                                     triangles=tri.triangles,  color = color, alpha = alpha)
-            nn = self.Vertices.shape[0]
+            #nn = self.Vertices.shape[0]
             e = [np.vstack([vCentered[self.Edges[i][0]], 
                                       vCentered[self.Edges[i][1]]]) for i in range(len(self.Edges)) ]
             line_collection = Line3DCollection(e, colors='k', linewidths=linewidth)
@@ -597,6 +608,9 @@ class Simple3Dpolyedron:
         return dot == 0
 
 
+
+
+
 def prism3D(base1, base2orExtrude):
     # the vertices in "base" should be ordered and consistent
     nb = base1.shape[0]
@@ -806,7 +820,6 @@ def projection3D(rho, domain):
         un = domain.Normals[i]
         edg = domain.Edges[abs(domain.Facets[i][0])-1]
         p = dProj.Vertices[edg[0],:]
-        vec_dir = dProj.Vertices[edg[1],:] - p
         rhoProj[index,:]= projPlane(un, p,  rhoProj[index,:])
     
     # debug
@@ -815,7 +828,6 @@ def projection3D(rho, domain):
     #plt.gca().scatter(rhoProj[indToDo,0],rhoProj[indToDo,1],rhoProj[indToDo,2],s = 100)
     #plt.plot(indToDo)
     return rhoProj
-
 
 
 #Domain(3).plot()

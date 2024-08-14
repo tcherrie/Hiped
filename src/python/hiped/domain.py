@@ -266,7 +266,7 @@ class Domain:
                 rho , space= gf2array(rho.copy())
             
         if self.Dimension == 0:
-            rhoProj =  np.ones(rho.shape)
+            rhoProj =  np.zeros(rho.shape)
         
         elif self.Dimension == 1:
             rhoProj = rho.copy()

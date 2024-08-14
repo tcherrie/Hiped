@@ -117,18 +117,20 @@ class Interpolation:
         if typeInit.lower() in ["zero", "zeros", "z", "null", "center"]:
             x0[self.Label] = np.zeros((nVariables, dim))
             if NGSpace is not None:
-                x0[self.Label] = [GridFunction(NGSpace) for i in range(dim)]
+                if dim == 0: 
+                    x0[self.Label] = [GridFunction(NGSpace)]
+                else : x0[self.Label] = [GridFunction(NGSpace) for i in range(dim)]
             
         elif typeInit.lower() in ["rand", "random", "r"]:
             if dim == 0:
                 x0[self.Label] = np.zeros((nVariables, dim))
                 if NGSpace is not None:
-                    x0[self.Label] = [GridFunction(NGSpace)]
+                    x0[self.Label] = [ GridFunction(NGSpace)]
             elif dim == 1:
                 x0[self.Label] = radius*(np.random.rand(nVariables, dim)-0.5)
                 if NGSpace is not None:
                     x0[self.Label] = [GridFunction(NGSpace)]
-                    x0[self.Label][0].vec.FV().NumPy()[:] = radius*(np.random.rand(nVariables, dim)-0.5)
+                    x0[self.Label][0].vec.FV().NumPy()[:] = radius*(np.random.rand(nVariables)-0.5)
             elif dim == 2:
                 R = radius*np.random.rand(nVariables)
                 th = np.random.rand(nVariables)*2*np.pi
@@ -154,7 +156,7 @@ class Interpolation:
                         x0[self.Label][i].vec.FV().NumPy()[:] = xyz[i]
         for child in self.Children:
             if isinstance(child,Interpolation):
-                x0 = child.setInitialVariable(nVariables, typeInit, radius, x0)
+                x0 = child.setInitialVariable(nVariables, typeInit, radius, x0, NGSpace =NGSpace)
                 
         return x0
     

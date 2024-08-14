@@ -197,7 +197,7 @@ class Interpolation:
         return w, dwdx
     
     
-    def eval(self, x, u, w_=dict(), flagCompil = True):
+    def eval(self, x, u, w_=dict(), flagCompil = False):
         # x = dict
         # u = dimInput x 1 x N
         
@@ -234,7 +234,7 @@ class Interpolation:
         return result
     
     
-    def __eval_NGsolve(self, x, u, w, flagCompil = True):
+    def __eval_NGsolve(self, x, u, w, flagCompil = False):
         nChildren = len(self.Children)
         
         # 1) computation of the children
@@ -243,16 +243,16 @@ class Interpolation:
         for i in range(nChildren):
             child = self.Children[i]
             if isinstance(child, Interpolation):
-                coeff[i] = child.__eval_NGsolve(x, u, w)
+                coeff[i] = child.__eval_NGsolve(x, u, w, flagCompil = False)
             else:
                 coeff[i] = child.eval(u)
         
         # 2) multiplication by the shape functions
         
-        x, space = gf2array(w[self.Label])
+        xArray, space = gf2array(w[self.Label])
         valGf = [GridFunction(space) for i in range(nChildren)]
         for i in range(nChildren):
-            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
+            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(xArray[:,i])
             
         
         # 3) Result
@@ -262,7 +262,7 @@ class Interpolation:
         if flagCompil: return result.Compile()
         else : return result
 
-    def evaldu(self, x, u, w_=dict(), flagCompil = True):
+    def evaldu(self, x, u, w_=dict(), flagCompil = False):
         if len(w_) == 0: w, _ = self.evalBasisFunction(x)
         else: w = w_.copy()
         
@@ -295,7 +295,7 @@ class Interpolation:
             result = np.sum(coeffd*Pw, 3)
         return result
     
-    def __evaldu_NGsolve(self, x, u, w, flagCompil = True):
+    def __evaldu_NGsolve(self, x, u, w, flagCompil = False):
         nChildren = len(self.Children)
 
         # 1) computation of the children
@@ -304,16 +304,16 @@ class Interpolation:
         for i in range(nChildren):
             child = self.Children[i]
             if isinstance(child, Interpolation):
-                coeff[i] = child.__evaldu_NGsolve(x, u, w)
+                coeff[i] = child.__evaldu_NGsolve(x, u, w, flagCompil = False)
             else:
                 coeff[i] = child.evald(u)
         
         # 2) multiplication by the shape functions
         
-        x, space = gf2array(w[self.Label])
+        xArray, space = gf2array(w[self.Label])
         valGf = [GridFunction(space) for i in range(nChildren)]
         for i in range(nChildren):
-            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
+            valGf[i].vec.FV().NumPy()[:] = self.Penalization[i].eval(xArray[:,i])
             
         # 3) Result
         result = 0
@@ -322,13 +322,13 @@ class Interpolation:
         if flagCompil: return result.Compile()
         else : return result
     
-    def evaldx(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = True):
+    def evaldx(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = False):
         result = result_.copy()
         if len(w_) == 0 or len(dwdx_) == 0 : w, dwdx = self.evalBasisFunction(x)
         else: w, dwdx = w_.copy(), dwdx_.copy()
         
         if isinstance(x[self.Label], list): # NGsolve
-            result = self.__evaldx_NGsolve(x, u, w, dwdx, k, result, flagCompil = True)
+            result = self.__evaldx_NGsolve(x, u, w, dwdx, k, result, flagCompil)
         else:
             if len(u.shape) < 3 : u= u.T.reshape(self.DimInput,1,-1)
             sz = u.shape[2]
@@ -365,14 +365,14 @@ class Interpolation:
         
         # 1) computation of the values of the children
         coeff = [None for i in range(nChildren)]
-        x, space = gf2array(w[self.Label])
+        xArray, space = gf2array(w[self.Label])
         for i in range(nChildren):
             child = self.Children[i]
             if isinstance(child, Interpolation):
                 coeff[i] = child.eval(x, u, w)
                 Pw =GridFunction(space)
-                Pw.vec.FV().NumPy()[:] = self.Penalization[i].eval(x[:,i])
-                result = child.__evaldx_NGsolve(x, u, w, dwdx, k*Pw, result)
+                Pw.vec.FV().NumPy()[:] = self.Penalization[i].eval(xArray[:,i])
+                result = child.__evaldx_NGsolve(x, u, w, dwdx, k*Pw, result, flagCompil = False)
             else:
                 coeff[i] = child.eval(u)
             
@@ -380,7 +380,7 @@ class Interpolation:
     
         dPdw = [GridFunction(space) for i in range(nChildren)]
         for i in range(nChildren):
-            dPdw[i].vec.FV().NumPy()[:] = self.Penalization[i].evald(x[:,i]);
+            dPdw[i].vec.FV().NumPy()[:] = self.Penalization[i].evald(xArray[:,i]);
 
         # 3) result
         dim = len(dwdx[self.Label][0])

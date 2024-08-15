@@ -259,7 +259,7 @@ class Interpolation:
         result = CoefficientFunction(0)
         for i in range(nChildren):
             result = valGf[i]*coeff[i] + result
-        if flagCompil: return result.Compile()
+        #if flagCompil: return result.Compile()
         else : return result
 
     def evaldu(self, x, u, w_=dict(), flagCompil = False):
@@ -319,7 +319,7 @@ class Interpolation:
         result = 0
         for i in range(nChildren):
             result = valGf[i]*coeff[i] + result
-        if flagCompil: return result.Compile()
+        #if flagCompil: return result.Compile()
         else : return result
     
     def evaldx(self, x, u, w_=dict(), dwdx_=dict(), k=1, result_=dict(), flagCompil = False):
@@ -391,9 +391,9 @@ class Interpolation:
                 
         result[self.Label] = [k * s[i] for i in range(dim)]
         #result[self.Label] = k * np.sum(coeff * dwdx[self.Label][None,:,:,:].transpose(0,2,3,1) * dPdw, axis = 3)
-        if flagCompil : 
-            for i in range(dim):
-                result[self.Label][i] = result[self.Label][i].Compile()
+        #if flagCompil : 
+        #    for i in range(dim):
+        #        result[self.Label][i] = result[self.Label][i].Compile()
         return result
     
     ###################

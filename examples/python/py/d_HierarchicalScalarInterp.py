@@ -5,10 +5,8 @@ Hierarchical scalar interpolation example
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ipywidgets import interact, interactive, fixed, interact_manual
-import ipywidgets as widgets
 import sys, os
-sys.path.append(os.path.relpath("../../../src/python"))
+sys.path.append(os.path.relpath("..//..//..//src//python"))
 import hiped as hp
 
 #%% 1) Definition of the interpolation tree

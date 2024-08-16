@@ -5,16 +5,15 @@ Hierarchical vector interpolation example
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ipywidgets import interact, interactive, fixed, interact_manual
-import ipywidgets as widgets
 import sys, os
-sys.path.append(os.path.relpath("../../../src/python"))
+sys.path.append(os.path.relpath("..//..//..//src//python"))
 import hiped as hp
+from hiped.utils import mult
 
 #%% 1) Definition of the interpolation tree
 # From the leaves to the root.
 
-from hiped.utils import mult
+
 
 dimInput = 2
 dimOutput = 2

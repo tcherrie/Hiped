@@ -5,7 +5,7 @@ Simple domains example
 
 import matplotlib.pyplot as plt
 import sys, os
-sys.path.append(os.path.relpath("../../../src/python"))
+sys.path.append(os.path.relpath("..//..//..//src//python"))
 import hiped as hp
 
 #%% 1) 0D domain

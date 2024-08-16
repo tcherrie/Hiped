@@ -6,7 +6,7 @@ Operations on VertexFunctions
 import matplotlib.pyplot as plt
 import numpy as np
 import sys, os
-sys.path.append(os.path.relpath("../../../src/python"))
+sys.path.append(os.path.relpath("..//..//..//src//python"))
 import hiped as hp
 
 #%% 1) Scalar case

@@ -1,3 +1,4 @@
 *.asv
 *checkpoint.ipynb
 *checkpoint.py
+/src/python/hiped/__pycache__

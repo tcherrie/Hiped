@@ -6,23 +6,77 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 class VertexFunction:
-    '''
-    VertexFunction Class
+    """
+    A class used to represent a quantity to interpolate, possibly depending
+    on an exterior field u.
     
-     To create a VertexFunction object, type
-     obj = VertexFunction(expression,derivative,label,dimInput,dimOuput)
+    Some operator overloading are implemented to make the definition of such 
+    quantities easier.
+
+    Attributes
+    ----------
     
-     where 'expression' and 'derivative' are function handles
-           'label' is a string identifier (default "")
-           'dimInput' and 'dimOutput' are numerics (default 1)
+    Label : str
+        Label of the VertexFunction
+        
+    DimInput : int
+        Size of the auxiliary scalar field u, which is taken as an input of the
+        VertexFunction. If there is no input (constant vertex function), then
+        DimInput should be the same as the other VertexFunctions. If all
+        VertexFunctions are constant, then this quantity doesn't matter 
+        (default : 1)
+        
+    DimOutput : int
+        Size of the output auqntity returned by evaluation of the 
+        VertexFunction (default : 1)
+        
+    Expression : function
+        Expression of the VertexFunction, depending on an exterior field u. The 
+        output shape should be (DimOutput,1,N) for an input shape of 
+        (DimInput,1,N). Constant matrix are supported, in this case DimInput
+        is the number of rows and DimOutput the number of columns.
+        
+    Derivative : function
+        Expression of the jacobian matrix of the VertexFunction. The output
+        shape should be (DimOutput,DimInput,N) for an input shape of 
+        (DimInput,1,N). In case of a constant matrix expression, the derivative
+        should be a zero aray with shape (DimOutput,DimInput,N) 
+        
+    flagNGSolve : bool
+        Flag true if Expression and Derivative contain NGSolve GridFunction or 
+        CoefficientFunction.
     
-     Following operators are overloaded : + - * / **
+    FlagParExp : bool
+        Flag handling parenthesis status in case of  exponentiation
     
-     A vertexFunction is a function depending on a variable a (scalar or
-     vector), and that will combined with others in an interpolation that
-     depends on another variable x.
+    FlagParMult : bool
+        Flag handling parenthesis status in case of multiplication
+        
+    Methods
+    -------
     
-    Copyright (C) 2024 Théodore CHERRIERE (theodore.cherriere@ricam.oeaw.ac.at.fr)
+    eval(u)
+        Compute the VertexFunction evaluated on u
+        
+    evald(u)
+         Compute the VertexFunction jacobian evaluated on u
+        
+    plot()
+        Plot the VertexFunction components
+        
+    t()
+        Return the transpose (useful for constant matrix)
+    
+    innerProduct(obj2)
+        Compute the inner (scalar) product between two VertexFunctions
+        
+    Supported overloaded operator  : +, -, /, *, @
+    Broadcasting is supported
+            
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -35,7 +89,8 @@ class VertexFunction:
     
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
+    """
+
     def __init__(self, label, f, dfdu, dimInput = 1 , dimOutput = 1):
         
         # Checks
@@ -448,16 +503,3 @@ class VertexFunction:
     def __str__(self):
         return self.Label
 
-
-# %%
-
-# f1 = VertexFunction("f1", f = lambda u: np.array([[u], [2*u]]),
-#                     dfdu = lambda u: np.array([[np.ones(u.shape)], [2*np.ones(u.shape)]]),
-#                     dimOutput=(2))
-
-# f2 = VertexFunction("f2", f = lambda u: np.array([[u], [2*u]]),
-#                     dfdu = lambda u: np.array([[np.ones(u.shape)], [2*np.ones(u.shape)]]),
-#                     dimOutput=(2))
-
-# f = f1**f2
-# f.plot()

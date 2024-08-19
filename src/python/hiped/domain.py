@@ -15,7 +15,84 @@ from matplotlib.patches import Polygon
 from  matplotlib.tri import Triangulation
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
+# %% I) Domain class
+
 class Domain:
+    """
+    A class used to represent an interpolation Domain
+    
+    An interpolation Domain is a convex polytope of R^n, n in {0,1,2,3}. Its
+    vertices are associated to quantities to interpolate.
+
+
+    Attributes
+    ----------
+    
+    Type : str
+        The designation of the domain ("Dot", "Line", "RegularPolygon", etc.)
+    
+    Dimension : int
+        The dimension of the domain (can be either 0, 1, 2 or 3)
+    
+    Vertices : (Nv x Dimension) NumPy array
+        The cartesian coordinates of the Nv vertices
+        
+    Edges : list
+       Edges list of the domain (3D only). An edge is a tuple of two integers 
+       representing the indices of its first and second ends
+    
+    Facets : list
+       Facets list of the domain (3D only). A facet is a tuple of N integers 
+       representing the signed indices of the edges delimitating it. The sign
+       is related to the positive or negative edge orientation relatively to
+       the trigonometric convention from the outside of the domain. To avoid 
+       ambiguity of 0 indexing, the real edge index is obtained by the 
+       following formula : abs(index)-1
+       
+    Normals : (Nf x 3) NumPy array
+       Outer unit normals associated to every facets (3D only)
+    
+    Vertices2Facets : list
+        List of the neighbouring facets of all vertices (3D only)
+       
+    Edges2Facets : [Ne x 2] NumPy array
+        Array providing the neighbouring facets of all vertices (3D only)
+        
+    NormalFan : NormalFan
+        Information related to the projection of outside points, see NormalFan
+        class (3D only) 
+     
+    Methods
+    -------
+    
+    projection(x)
+        Project the cartesian coordinates of the points contained in x onto the
+        domain
+    
+    plot()
+        Display the domain
+        
+    plotProjection(x = 8*(np.random.rand(50,3)-0.5))
+        Display the original and projected points
+
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    """
+
     def __init__(self, domain_type, radius=1, lengthNormalFan = 1, epsProj=1e-5):
         
         self.Vertices = None
@@ -400,11 +477,69 @@ class Domain:
             ax.plot(rhoProj[:,0],rhoProj[:,1], 'r*')
         ax.add_collection(line_collection)
 
-'''
-Normal fan (for projection)
-'''
+# %% II) Normal fan
+# %%% a) Normal fan class
 
 class NormalFan:
+    """
+    A class used to represent the normal fan associated to a domain
+    
+    The normal fan collects all the normal cones associated to every faces 
+    (vertices, edges, facets) of the 3D domain. When a point is located inside
+    one of the normal cones, then it should be projected orthogonally to its 
+    associated face.
+
+    Attributes
+    ----------
+    
+    EpsProj : float
+        Shrink coefficient of the domain used for projection (0 = same domain,
+        1 = domain totally shrunk). The computation of shape functions is
+        singular when EpsProj = 0, and the projection is inaccurate when
+        EpsProj is too large (default : 1e-5).
+        
+    Length : float
+        Height of the normal cones, useful for displaying (default : 1).
+    
+    Polygon : Simple2DPolygon or Simple3DPolygon
+        Shrunk domain to be projected onto.
+    
+    ConesVertices : list
+        List of normal cones associated with the vertices of the domain. The
+        normal cones are instances of Simple2DPolygon or Simple3DPolygon.
+        
+    ConesEdges :list
+        List of normal cones associated with the edges of the domain. The
+        normal cones are instances of Simple2DPolygon or Simple3DPolygon.
+        
+    ConesFacets :list
+        List of normal cones associated with the facets of the domain. The
+        normal cones are instances of Simple2DPolygon or Simple3DPolygon.
+         
+    Methods
+    -------
+    
+    plot(alpha = 0.1)
+        Display the normal fan.
+
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    """
+
     def __init__(self, domain, length = 1, epsProj = 1e-5):
         self.EpsProj = epsProj
         dProj = deepcopy(domain)
@@ -502,11 +637,64 @@ def normalFan3D(domain, length = 1):
     
     return prismFacet, roofsEdges, conesVertices
 
-'''
-Utilities for defining the normal fan
-'''
+# %%% b) Normal fan utilities
 
 class Simple2Dpolygon:
+    """
+    A class used to represent a convex polygon in 2D
+    
+    This classes is optimized to compute if points are inside the polygon
+
+    Attributes
+    ----------
+    
+    Vertices : [N x 2] NumPy array
+        Ordered vertices of the polygon.
+    
+    Normals : [N x 2] NumPy array
+        Unit outer normal vector of the polygon's edges.
+        
+    Area : float
+        Area of the polygon.
+        
+    Methods
+    -------
+    
+    computeArea(pTest)
+        Compute the area of all triangles resulting from the association of 
+        pTest and the edges. If the resulting area is greater than the area of
+        the polygon, then pTest is outside the polygon (however it is not the
+        best way to test if pTest is inside the domain or not, use isInside 
+        instead).
+        
+    isInside(pTest, inf = None, tol = 1e-12)
+        Test if the points in pTest are inside the domain. The algorithm relies
+        on scalar products between relative orientation of the points and the 
+        edges' normals. The index given in inf removes the associated normals 
+        from the calculation, making the polygon "infinite" in these
+        direction.
+        
+     plot(color = 'r', alpha = 0.5)
+         Display the polygon.
+            
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    """
+
     def __init__(self, vertices): # should be in trigonometric order
         self.Vertices = np.array(vertices)
         vn =  np.vstack([self.Vertices[1:,:]-self.Vertices[:-1,:],self.Vertices[0,:]-self.Vertices[-1,:]])
@@ -555,6 +743,68 @@ class Simple2Dpolygon:
         
 
 class Simple3Dpolyedron:
+
+    """
+    A class used to represent a convex polyedron in 3D
+    
+    This classes is optimized to compute if points are inside the polygon
+
+    Attributes
+    ----------
+    
+    Vertices : [Nv x 3] NumPy array
+        Vertices of the polyedron.
+    
+    MeshSurf : [Ne x 3] NumPy array
+        Connectivity table of a triangular mesh of the surface (for display)
+    
+    Normals :  [Nf x 3] NumPy array
+        Unit outer normals associated to each facet
+        
+    PointsFacets : [Nf x 3] NumPy array
+        Coordinates of points lying on each facet
+        
+    Volume : float
+        Volume of the polyedron
+        
+    Methods
+    -------
+    
+    computeVol(pTest)
+        Compute the volume of all tetradron resulting from the association of 
+        pTest and the MeshSurf. If the resulting volume is greater than the 
+        volume of the polyedron, then pTest is outside (however it is not the
+        best way to test if pTest is inside the domain or not, use isInside 
+        instead).
+        
+    isInside(pTest, inf = None, tol = 1e-12)
+        Test if the points in pTest are inside the domain. The algorithm relies
+        on scalar products between relative orientation of the points and the 
+        facets' normals. The index given in inf removes the associated normals 
+        from the calculation, making the polyedron "infinite" in these
+        direction.
+        
+     plot(color = [0,0,0], alpha = 0.5)
+         Display a 3D representation of the polyedron.
+            
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    """
+
     def __init__(self, vertices, normals = None, meshSurf = None, pointsFacets = None, vol = None):
         self.Vertices = np.array(vertices)
         self.MeshSurf = meshSurf
@@ -667,9 +917,7 @@ def pyramid3D(base, top):
     
     return pyramid
 
-'''
-2D projection routines
-'''
+# %% III) Projection utilities
 
 def proj(vector, q):
     p0 = vector[0, :]
@@ -817,5 +1065,3 @@ def projection3D(rho, domain):
     return rhoProj
 
 
-
-#Domain(3).plot()

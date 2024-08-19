@@ -18,24 +18,81 @@ import matplotlib.colors as mcolors
 from scipy.optimize import minimize
 from copy import deepcopy
 
+# %% I) Interpolation
+
 class Interpolation:
-    '''
-    Interpolation Class
+    """
+    A class used to represent an Interpolation
     
-     To create an Interpolation object, type
-     obj = Interpolation(structure)
+    An Interpolation object describes a mathematical tree. The leaves are
+    VertexFunctions, interpolated by ShapeFunctions and Penalizations. See
+    the examples files for some illustrations.
+
+
+    Attributes
+    ----------
+        
+    Label : str
+        Label of the current interpolation node (should be unique in the 
+        interpolation tree)
     
-     where 'structure' contains the following fields :
-     - 'Domain' : an instance of the Domain class with n vertices
-     - 'Children' : a vector of n VertexFunction or Interpolation instances
-     - 'Label' : a unique string identifier
-     - 'Penalization' (facultative) : an array of Penalization instances
+    Children : list
+        The list of children (VertexFunction or Interpolation instances)
+
+    ShapeFunction : ShapeFunction
+        Description of the shape functions associated to the current node 
+        (default : Wachspress basis functions)
     
-     An Interpolation object describes a tree. The leaves are
-     VertexFunctions, interpolated by ShapeFunctios and Penalizations. See
-     the examples files for some illustrations.
+    Penalization : list
+        Penalization associated to each child of the interpolation (default : 
+        Penalization("simp",1) for each child)
+                    
+    DimInput : int
+        Dimension of the input "physical field" u (default 1 => scalar)
     
-    Copyright (C) 2024 Théodore CHERRIERE (theodore.cherriere@ricam.oeaw.ac.at.fr)
+    DimOutput : int
+        Dimension of the resulting interpolated quantity (default 1 => scalar)
+
+
+    Methods
+    -------
+    
+    setInitialVariable(nVariables = 10, typeInit = "zero", radius = 1, 
+                       x00 = dict(), NGSpace = None)
+        Set the initial coordinates with the appropriate structure
+    
+    projection(x, copyFlag = False, deepcopyFlag = False)
+        Project the coordinates contained in x onto the interpolation domain
+        
+    evalBasisFunction(x)
+        Compute the basis functions associated to each node of the 
+        interpolation tree from the coordinates x
+        
+    eval(x, u, w=dict())
+        Compute the interpolation associated to the coordinates x and field u
+    
+    evaldu(x, u, w=dict())
+        Compute the derivative of the interpolation with respect to the field u
+    
+    evaldx(x, u, w=dict(), dwdx=dict())
+        Compute the derivative of the interpolation with respect to the
+        coordinates x
+        
+    plotTree(x= 0, ymin = -1, ymax = 1, scaleChildren = 1, cmap = plt.cm.Set1)
+        Plot a tree representation of the interpolation
+    
+    plot(x = dict())
+        Plot a 3D representation of the interpolation, possibly with the
+        coordinate x if provided
+        
+    getAllNodes()
+        Return all the Interpolation instances of the progeny (including 
+        current node)
+    
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -48,7 +105,8 @@ class Interpolation:
     
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-    '''
+    """
+
     def __init__(self, domain, children, label, penalization = [], typeShapeFunction = "wachspress",
                  dimInput = None, dimOutput = None):
         '''
@@ -373,11 +431,77 @@ class Interpolation:
 
         
     
-'''
-II) Shape functions
-'''
+# %% II) Shape functions
 
 class ShapeFunction:
+    """
+    A class used to represent an ShapeFunction
+    
+    A ShapeFunction object is the elementary brick to build interpolations on
+    general domain (restricted to convex polyedrons up to 3 dimensions). It
+    maps the cartesian coordinate x to one scalar value in [0,1] per domain 
+    vertex. Since they have the appropriate mathematical properties
+    (generalized barycentric coordinate, see [1], [2]), the resulting shape 
+    functions (denoted as w) can then be multiplied by the quantity to
+    interpolate and before being summed up.
+    
+    [1] Floater, M. S. (2015). Generalized barycentric coordinates and 
+    applications. In Acta Numerica (Vol. 24, pp. 161–214). Cambridge University 
+    Press (CUP). https://doi.org/10.1017/s0962492914000129 
+    
+    [2] Gillette, A. (2011) Generalized Barycentric Coordinates for Polygonal
+    Finite Elements https://math.arizona.edu/~agillette/research/ccomOct11.pdf
+
+    Attributes
+    ----------
+    
+    Domain : Domain
+        Interpolation domain (instance of Domain class)
+    
+    Type : str
+        Type of shape function. For now only "wachspress" is supported; other
+        types exist but are not implemented yet (such as mean-value, Malsch,
+        etc.), see for instance:
+            
+        Floater, M. S., Hormann, K., & Kós, G. (2006). A general construction 
+        of barycentric coordinates over convex polygons. In Advances in 
+        Computational Mathematics (Vol. 24, Issues 1–4, pp. 311–331). Springer 
+        Science & Business Media LLC. https://doi.org/10.1007/s10444-004-7611-6 
+        
+    Reference : str
+        Literature reference(s) related to the shape function origine or its
+        implementation
+    
+    Methods
+    -------
+    
+    eval(x)
+        Evaluate the shape functions and their gradient at the cartesian
+        coordinate(s) x, that should lie inside the interpolation domain
+    
+    plot(nVertex = 0, level=3,  cmap = plt.cm.viridis)
+        Plot a representation of the shape function associated to the vertex
+        number nVertex.
+    
+    
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    """
+
     
     def __init__(self, domain, label = "", reference = "", type= "wachspress"):
         self.Type = type
@@ -531,6 +655,9 @@ class ShapeFunction:
               + f' domain with {self.Domain.Vertices.shape[0]} vertices')
     
     
+# %% III) Utilities
+
+
 def getNormals(v):
     """
     Compute the outward unit normals for each edge of a polygon.

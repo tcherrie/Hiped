@@ -2,20 +2,46 @@ import numpy as np
 import matplotlib.pyplot as plt
    
 class Penalization:
-    '''
-    Penalization Class
+    """
+    A class used to represent a penalization function.
     
-     To create a Penalization object, type
-     obj = Penalization(type,p)
+    Feel free to add your own custom penalization functions to the library in 
+    the __init__ method.
+
+    Attributes
+    ----------
     
-     - 'type' is a string identifier related to a type of penalization
-     such as "simp", "ramp", etc.
-     - p is the penalization coefficient
+    CoeffPenal : float
+        Penalization coefficient
+        
+    Type : str
+        Label of the penalization
+        
+    Reference : str
+        Litterature related to the penalization
+        
+    Expression : function
+        Expression of the penalization function
     
-     Penalization are applied to shape functions. They can be useful in
-     the context of topology optimization.
+    Derivative : function
+        Expression of the derivative of the penalization function
+        
+    Methods
+    -------
     
-    Copyright (C) 2024 Théodore CHERRIERE (theodore.cherriere@ricam.oeaw.ac.at.fr)
+    eval(x)
+        Compute the penalization evaluated on x
+        
+    evald(x)
+         Compute the penalization derivative evaluated on x 
+        
+    plot(derivative = False)
+        Plot the penalization or its derivative on [0,1] interval.
+            
+    License
+    -------
+    
+    Copyright (C) 2024 Théodore CHERRIÈRE (theodore.cherriere@ricam.oeaw.ac.at)
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -28,8 +54,9 @@ class Penalization:
     
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-    '''
-    
+    """
+
+
     def __init__(self, penalType = "simp", coeffPenal = 1, reverse = False, reference = "",
                  derivative1 = 1, derivative2 = 1):
         

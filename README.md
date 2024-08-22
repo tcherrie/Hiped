@@ -1,5 +1,7 @@
 # Hierarchical Interpolation with Projection, Evaluation, and Derivation
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tcherrie/Hiped/edit/dev_ngsolve?urlpath=/tree/)
+
 [![GitHub license](https://img.shields.io/github/license/tcherrie/Hiped)](https://github.com/tcherrie/Hiped) [![GitHub release](https://img.shields.io/github/release/tcherrie/Hiped.svg)](https://github.com/tcherrie/Hiped/releases/) [![GitHub stars](https://img.shields.io/github/stars/tcherrie/Hiped)](https://github.com/tcherrie/Hiped/stargazers)
 [![DOI](https://zenodo.org/badge/763998095.svg)](https://zenodo.org/doi/10.5281/zenodo.10718117)
 

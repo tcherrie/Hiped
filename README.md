@@ -3,7 +3,7 @@
 [![GitHub license](https://img.shields.io/github/license/tcherrie/Hiped)](https://github.com/tcherrie/Hiped) [![GitHub release](https://img.shields.io/github/release/tcherrie/Hiped.svg)](https://github.com/tcherrie/Hiped/releases/) [![GitHub stars](https://img.shields.io/github/stars/tcherrie/Hiped)](https://github.com/tcherrie/Hiped/stargazers)
 [![DOI](https://zenodo.org/badge/763998095.svg)](https://zenodo.org/doi/10.5281/zenodo.10718117)
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tcherrie/Hiped/dev_ngsolve?urlpath=/tree/)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tcherrie/binder-ngsolve/main?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Ftcherrie%252FHiped%26urlpath%3Dtree%252FHiped%252Fexamples%252Fpython%252Fngsolve%26branch%3Ddev_ngsolve)
 
 The purpose of this code is to define arbitrary interpolation trees with some utilities (evaluation, projection, and derivation) that can be used, for instance, in multi-material topology optimization algorithms [^1][^2], as well as in other applications using projected gradient descent.
 
@@ -12,10 +12,8 @@ This code is a major upgrade of [^3], based itself on [^4].
 
 ## Quickstart
 
+Click on the following Binder link and run the Python/NGSolve examples: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tcherrie/binder-ngsolve/main?urlpath=git-pull%3Frepo%3Dhttps%253A%252F%252Fgithub.com%252Ftcherrie%252FHiped%26urlpath%3Dtree%252FHiped%252Fexamples%252Fpython%252Fngsolve%26branch%3Ddev_ngsolve)
 
-Start by running the example files in the folder "examples". If your Matlab version supports it, you can run the LiveScripts (in "examples/notebooks"), or traditional .m files (in "examples/mfiles"), in alphabetical order.
-
-**NB**: The code has been successfully tested on Matlab R2023a.
 
 
 ## Purpose

@@ -816,7 +816,8 @@ class ShapeFunction:
             ax.set_xlabel("x")
             ax.set_ylabel("y")
             ax.set_zlabel("z")
-        
+            for i in range(vCentered.shape[0]):
+                ax.text(vCentered[i,0]*1.1, vCentered[i][1]*1.1, vCentered[i][2]*1.1, f"v{i}")    
         
     def __str__(self):
         print(f'{self.Type} basis functions defined on a {self.Domain.Dimension}D'

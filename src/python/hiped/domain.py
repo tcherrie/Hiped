@@ -423,6 +423,7 @@ class Domain:
                         ax.text(pts[i,0],pts[i,1], "  v"+str(i), color = color[0:3])
         
         elif self.Dimension == 3:
+            plt.axis("off")
             if "3d" not in str(type(ax)):
                 ax = plt.gcf().add_subplot(projection='3d')
                  
@@ -470,7 +471,7 @@ class Domain:
                     ax.text(pts[i,0],pts[i,1], pts[i,2], "  v"+str(i), color = color[0:3])
                     
         plt.axis("equal")
-
+        plt.axis("off")
         
     def plotProjection(self, x = 8*(np.random.rand(50,3)-0.5), alpha = 0):
         dim = self.Dimension

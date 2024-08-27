@@ -287,3 +287,19 @@ def pointTriangle(pp,l=0, p=[]):
         p = pointTriangle([(p1+p2)/2,(p2+p3)/2,(p1+p3)/2],l,p)
     return p
 
+def meshTri(n, x = None, y = None, tri = np.zeros((0,3), dtype =int)):
+    if x is None:
+        x = np.hstack([ np.arange(0.,n), np.arange(0.,n-1)])/(n-1)
+        y = np.hstack([ np.zeros(n), np.ones(n-1)/(n-1)])
+        t1 = np.array([[i, i+1, i+n] for i in range(n-1)], dtype =int)
+        t2 = np.array([[i+n, i+n+1, i+1] for i in range(n-2)], dtype =int)
+    else:
+        t1 = np.array([[i, i+1, i+n] for i in range(n-1)], dtype =int) + x.size - n
+        t2 = np.array([[i+n, i+n+1, i+1] for i in range(n-2)], dtype =int) + x.size - n
+        y = np.hstack([y, np.ones(n-1)*(y[-1]+(x[-1]-x[-2]))])
+        x =  np.hstack([x, np.linspace(0.,x[-2],n-1)])
+    
+    tri = np.vstack([tri, t1, t2.reshape(-1,3)])
+    if n>2:
+        x, y, tri = meshTri(n-1, x, y, tri)
+    return x, y, tri

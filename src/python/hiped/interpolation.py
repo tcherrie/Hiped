@@ -757,6 +757,10 @@ class ShapeFunction:
             
         elif self.Domain.Dimension == 3: # 3D (only the facets are plotted)
             ax = plt.figure().add_subplot(projection='3d')
+            X, Y, Z = np.zeros(0),np.zeros(0),np.zeros(0)
+            FC = np.zeros(0)
+            TRI = np.zeros((0,3), dtype = int)
+            sz = 0
             for facets in self.Domain.Facets:
                 pointsFacets = []
                 for edges in facets:
@@ -773,6 +777,7 @@ class ShapeFunction:
                 pTriangle = [[vc, xyzFacet[i], xyzFacet[ (i+1) % npp]] for i in range(npp)]
                 pointsTri = np.zeros((0,3))
                 
+
                 for pp in pTriangle: # "mesh" every elementary triangles of the facet
                     
                     # 1) map to the reference elt
@@ -783,20 +788,34 @@ class ShapeFunction:
                     
                     ptRef = Facet2Ref(np.array(pp))
                 
-                    pointsTriRefLocal = np.unique(pointTriangle(ptRef, l=level), axis=0)
+                    # 2) mesh it efficiently
                     
-                    tri = Triangulation(pointsTriRefLocal[:,0],pointsTriRefLocal[:,1])
-                    
+                    xx, yy, tri = meshTri(2**level+1)
+                    TRI = np.vstack([TRI, tri+sz])
+                    xx = xx.reshape(1,-1)
+                    yy = yy.reshape(1,-1)
+                    zz = xx*ptRef[-1,0] + yy*ptRef[-1,1] + (1-xx-yy)*ptRef[-1,2]
+                    pointsTriRefLocal = np.vstack([xx,yy,zz]).T
+                        
+                    # 3) Pull back to the original space
                     pointsTriLocal = Ref2Facet(pointsTriRefLocal)
+                    X = np.hstack([X,pointsTriLocal[0,:]])
+                    Y = np.hstack([Y,pointsTriLocal[1,:]])
+                    Z = np.hstack([Z,pointsTriLocal[2,:]])
+                    sz = len(X)
+                    
+                    # 4) compute shape functions
                     w, _ =  self.eval(pointsTriLocal.T)
                     w = w[nVertex,:,:].flatten()
-                    p3dc = ax.plot_trisurf(pointsTriLocal[0], pointsTriLocal[1], pointsTriLocal[2],
-                                    triangles=tri.triangles, linewidth=0.5,  color = [1,1,1,0.9])
-                    #p3dc.set_fc(plt.get_cmap(cmap)(w))    
-                ax.set_aspect('equal', 'box')
-                ax.set_xlabel("x")
-                ax.set_ylabel("y")
-                ax.set_zlabel("z")
+                    
+                    FC =  np.hstack([FC,np.sum(w[tri], axis = 1)/3]) 
+                    
+            p3dc = ax.plot_trisurf(X, Y, Z, triangles=TRI, linewidth=0.5,  color = [1,1,1,0.9])
+            p3dc.set_fc(plt.get_cmap(cmap)(FC))    
+            ax.set_aspect('equal', 'box')
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
         
         
     def __str__(self):

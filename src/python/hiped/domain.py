@@ -75,6 +75,9 @@ class Domain:
     plotProjection(x = 8*(np.random.rand(50,3)-0.5))
         Display the original and projected points
 
+    plotDual()
+        Display the dual domain
+
     License
     -------
     
@@ -478,6 +481,56 @@ class Domain:
             ax.plot(rho[:,0],rho[:,1], 'bo')
             ax.plot(rhoProj[:,0],rhoProj[:,1], 'r*')
         ax.add_collection(line_collection)
+
+    def plotDual(self, color = [0,0,1], alpha = 0.3, length = 1):
+        dim = self.Dimension
+        if dim == 0:
+            ax = plt.gca()
+            ax.text(0, 0, "v"+str(0), color="b")
+        if dim == 1:
+            ax = plt.gca()
+            v = np.hstack([self.Vertices,np.zeros((2,1))])
+            v1 = np.array([v[0,1],-v[0,0]])
+            v2 = np.array([v[1,1],-v[1,0]])
+            plt.plot(np.array([v1[0],v2[0]]),np.array([v1[1],v2[1]] ), color="b")
+            v=v/2
+            for i in range(v.shape[0]):
+                ax.text(v[i,0]*length, v[i,1]*length, "v"+str(i), color="b")
+            
+        if dim == 2:
+            ax = plt.gca()
+            v = self.Vertices
+            vMid = np.vstack([v[:-1,:] + v[1:,:],v[-1,:] + v[0,:]])
+            vMid = vMid / np.linalg.norm(vMid,axis = 1,keepdims=True) * length
+            arcs = [ np.vstack([[[0.,0.]], vMid[i,:]]) for i in range(vMid.shape[0])]
+            arcs = LineCollection(arcs, color="b")
+            plt.gca().add_collection(arcs)
+            plt.axis([-1,1,-1,1])
+            v=v/2
+            for i in range(v.shape[0]):
+                ax.text(v[i,0]*length, v[i,1]*length, "v"+str(i), color="b")
+        if dim == 3:
+            if "3d" not in str(type(plt.gca())): plt.close() ; plt.figure();  plt.gcf().add_subplot(projection='3d')
+            ax = plt.gca()
+            # 1) draw edges
+            edgesDual = [np.vstack([[[0.,0.,0.]], n*length]) for n in self.Normals ]
+            arcs = Line3DCollection(edgesDual, color="b")
+            ax.add_collection(arcs)
+            
+            # 2) draw surface
+            pts = np.vstack([[0.,0.,0.], self.Normals*length])
+            
+            e2f = self.Edges2Facets
+            tri = np.hstack([e2f+1, np.zeros((len(e2f),1))])
+            
+            plt.gca().plot_trisurf(pts[:,0], pts[:,1], pts[:,2],
+                            triangles=tri, linewidth=0.5,  color = color + [alpha])
+            v = self.Vertices/2
+            for i in range(v.shape[0]):
+                ax.text(v[i,0]*length, v[i,1]*length, v[i,2]*length,"v"+str(i), color="b")
+            plt.axis([-1,1,-1,1,-1,1])
+        plt.axis("equal")
+        plt.axis("off")
 
 # %% II) Normal fan
 # %%% a) Normal fan class

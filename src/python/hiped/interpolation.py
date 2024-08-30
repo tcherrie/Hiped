@@ -569,7 +569,7 @@ class ShapeFunction:
         if self.Domain.Dimension == 1: # 1D
             x = np.linspace(vCentered[0][0], vCentered[1][0], 100)
             w, _ = self.eval(x)
-            w = w[nVertex]
+            w = np.sum(w[nVertex], axis = 0)
             plt.plot(x, w.flatten())
             plt.xlabel('x')
             plt.ylabel(r'$\omega(x)$')
@@ -591,7 +591,7 @@ class ShapeFunction:
             x = pointsTri[:,0]
             y = pointsTri[:,1]
             z, _ =  self.eval(pointsTri)
-            z = z[nVertex,:,:].flatten()
+            z = np.sum(z[nVertex,:,:], axis = 0).flatten()
             
             
             ax = plt.figure().add_subplot(projection='3d')
@@ -657,7 +657,7 @@ class ShapeFunction:
                     
                     # 4) compute shape functions
                     w, _ =  self.eval(pointsTriLocal.T)
-                    w = w[nVertex,:,:].flatten()
+                    w = np.sum(w[nVertex,:,:], axis = 0).flatten()
                     
                     FC =  np.hstack([FC,np.sum(w[tri], axis = 1)/3]) 
                     

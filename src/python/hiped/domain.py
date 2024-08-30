@@ -330,7 +330,57 @@ class Domain:
                         else:
                             self.Edges2Facets[edges[j]-1, 1] = i
                             
-            # other interesting domains (TODO) : pyramid 8 (half diamond)
+            elif isinstance(domain_type, str) and "pyramid" in domain_type.lower():
+                self.Dimension  = 3
+                n = int(''.join(filter(str.isdigit, domain_type.lower())))
+                self.Type = "Pyramid"+str(n)
+
+                theta = np.linspace(0, 2 * np.pi, n + 1) + np.pi / n
+                theta = theta[:-1]
+                z = -1/n
+                R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), 
+                         np.array([[radius*np.sqrt(1-z**2)], [0]]))
+                v = R.reshape(2, n).T
+                
+                v = np.vstack([np.hstack([v, z * np.ones((n, 1))]), [[0,0,1]] ])
+                self.Vertices = v
+            
+                self.Vertices2Facets = [[] for i in range(n+1)]
+                for i in range(0, n):
+                    i1 = i
+                    i2 = (i + n - 1) % n
+                    self.Vertices2Facets[i] = [i1, i2, n]
+                self.Vertices2Facets[n] = list(range(0,n))
+                
+                un = np.zeros((n+1,3))
+                for i in range(n):
+                    un[i] = np.cross(v[(i + 1) % n, :] - v[i, :], v[-1, :] - v[i, :])
+                un[n,:] = [0, 0, -1]
+                self.Normals = np.array(un) / np.linalg.norm(un, axis=1, keepdims=True)
+                
+                self.Edges = np.zeros((2 * n, 2), dtype=int)
+                for i in range(n):
+                    i2 = (i+1) % n
+                    self.Edges[i, :] = [i, i2]
+                    self.Edges[i + n , :] = [i, n]
+            
+                self.Facets = [[] for i in range(n+1)]
+                for i in range(1, n + 1):
+                    i1 = i
+                    i2 = (i % n) + 1 +  n
+                    i3 = -((i - 1) % n) - 1 - n
+                    self.Facets[i-1] = [i1, i2, i3]
+            
+                self.Facets[n] = list(range(1, n+1))
+                        
+                self.Edges2Facets = -np.ones((len(self.Edges), 2), dtype=int)
+                for i in range(len(self.Facets)):
+                    edges = np.abs(self.Facets[i])
+                    for j in range(len(edges)):
+                        if self.Edges2Facets[edges[j]-1, 0] < 0:
+                            self.Edges2Facets[edges[j]-1, 0] = i
+                        else:
+                            self.Edges2Facets[edges[j]-1, 1] = i
             
             self.NormalFan = NormalFan(self, length = lengthNormalFan, epsProj=epsProj)   
 

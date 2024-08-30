@@ -1,3 +1,5 @@
 *.asv
 *checkpoint.ipynb
 *checkpoint.py
+*.pyc
+*.cpython-311.pyc

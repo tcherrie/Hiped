@@ -117,7 +117,7 @@ classdef ShapeFunction
             if size(vCenter,2)==1 && size(vCenter,1)==2 % 1D = 2 vertices
                 x=linspace(vCenter(1),vCenter(2),100).';
                 w=obj.eval(x);
-                w=w(nVertex,:,:);
+                w=sum(w(nVertex,:,:),1);
                 plot(x,w(:));
                 xlabel('x');
                 ylabel('\omega(x)');
@@ -132,7 +132,7 @@ classdef ShapeFunction
                 in=pgon.isinterior(x(:),y(:));
                 tr = delaunayTriangulation(x(in),y(in));
                 w=obj.eval([x(in),y(in)]);
-                c=permute(w(nVertex,:,:),[3 2 1]);
+                c=permute(sum(w(nVertex,:,:),1),[3 2 1]);
                 trisurf(tr.ConnectivityList,tr.Points(:,1),tr.Points(:,2),c)
                 colorbar off; maxval=max(tr.Points(:));
                 axis([-maxval maxval -maxval maxval]*1.5);axis equal
@@ -173,7 +173,7 @@ classdef ShapeFunction
                 Z0=sum([nodes(tri(:,1),3),nodes(tri(:,2),3),nodes(tri(:,3),3)],2)/3;
                 in=shp.inShape(X0,Y0,Z0);
                 tri=tri(in,:);
-                w=obj.eval(nodes); w=w(nVertex,:,:);
+                w=obj.eval(nodes); w=sum(w(nVertex,:,:),1);
                 w(w>1)=1; w(w<0)=0; % for points outside the polyhedron
                 trisurf(tri,nodes(:,1),nodes(:,2),nodes(:,3),w(:))
                 shading interp

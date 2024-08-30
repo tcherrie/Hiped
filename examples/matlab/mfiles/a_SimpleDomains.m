@@ -21,7 +21,7 @@ figure()
 domain2D.plot()
 %% 3) 3D domain
 
-name3D = "diamond8"; % template based (diamond & prism)
+name3D = "diamond8"; % available : tetra, cube, diamond, prism, pyramid
 domain3D = Domain(name3D);
 figure()
 domain3D.plot()

@@ -31,7 +31,7 @@ plt.show()
 
 #%% 4) 3D domain
 
-domain3 = hp.Domain("diamond6") # available : "tetra", "cube", "diamondN", "prismN" (N being an integer)
+domain3 = hp.Domain("diamond6") # available : "tetra", "cube", "diamondN", "prismN", "pyramidN" (N being an integer)
 plt.figure()
 domain3.plot()
 plt.show()

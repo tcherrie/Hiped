@@ -73,7 +73,7 @@ classdef Domain
             %  "cube" -> cube
             %  "diamondN" -> diamond with a base of N vertices (N is a number)
             %  "prismN" -> prism with a base of N vertices (N is a number)
-            %
+            %  "pyramidN" -> pyramid with a base of N vertices (N is a number)
             % radius is a float, representing the radius of the circumcircle
             % (default value = 1).
             %
@@ -287,6 +287,53 @@ classdef Domain
                             end
                         end
                     end
+
+                elseif contains(lower(type),"pyramid")
+                    n  = str2double(extract(lower(type),regexpPattern("\d+")));
+                    theta=linspace(0,2*pi,n+1)+pi/n;
+                    theta=shiftdim(theta(1:end-1),-2);
+                    z = -1/n;
+                    R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[radius*sqrt(1-z^2);0]);
+                    v=reshape(R,[2,n]).'; v=[[v,z*ones(n,1)];[0,0,1]]; obj.Vertices=v;
+                    
+                    for i=1:n
+                        i1=i;
+                        i2 = mod(i+n-2,n)+1;
+                        i3 = n+1;
+                        obj.Vertices2Facets{i} = [i1,i2,i3];
+                    end
+                    obj.Vertices2Facets{n+1} = 1:n;
+
+                    for i=1:n
+                        un(i,:)=cross(v(mod(i,n)+1,:)-v(i,:),v(n+1,:)-v(i,:));
+                    end
+                    un(n+1,:) = [0,0,-1];
+                    obj.Normals=un./vecnorm(un,2,2);
+
+                    for i=1:n
+                        obj.Edges(i,:)=[i,mod(i,n)+1];
+                        obj.Edges(i+n,:)=[i,1+n];
+                    end
+
+                    for i=1:n
+                        i1 = i;
+                        i2 = n + 1+ mod(i,n);
+                        i3 = - n - i;
+                        obj.Facets{i} = [i1,i2,i3];
+                    end
+                    obj.Facets{end+1} = (1:n);
+                    obj.Edges2Facets=zeros(length(obj.Edges),2);
+                    for i=1:length(obj.Facets)
+                        edges=abs(obj.Facets{i});
+                        for j=1:length(edges)
+                            if obj.Edges2Facets(edges(j),1)==0
+                                obj.Edges2Facets(edges(j),1)=i;
+                            else
+                                obj.Edges2Facets(edges(j),2)=i;
+                            end
+                        end
+                    end
+                    v=obj.Vertices;
                 end
                 
                 if nargin<=2 || isempty(epsProj), epsProj = 1e-5; end

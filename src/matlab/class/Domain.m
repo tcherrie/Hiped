@@ -135,7 +135,7 @@ classdef Domain
                 elseif class(type)=="double" % dimension 2 : a regular polygon
                     if  length(type)==1
                         theta=linspace(0,2*pi,type+1)+(2*pi)/(2*type);
-                        theta=shiftdim(theta(1:end-1),-2);
+                        theta=shiftdim(theta(1:end-1),-2) - pi/2;
                         R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[1;0]);
                         obj.Vertices=reshape(R,[2,type]).';
                         v=obj.Vertices;
@@ -150,7 +150,7 @@ classdef Domain
                 elseif lower(type)=="tetra" || lower(type)=="tetraedron"
                     
                     theta=linspace(0,2*pi,3+1)+(2*pi)/(2*3);
-                    theta=shiftdim(theta(1:end-1),-2);
+                    theta=shiftdim(theta(1:end-1),-2) - pi/2;
                     h = 1/3*radius;
                     R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[radius*2*sqrt(2)/3;0]);
                     v1=reshape(R,[2,3]).';
@@ -207,7 +207,7 @@ classdef Domain
                 elseif contains(lower(type),"diamond")
                     n  = str2double(extract(lower(type),regexpPattern("\d+")));
                     theta=linspace(0,2*pi,n+1)+pi/n;
-                    theta=shiftdim(theta(1:end-1),-2);
+                    theta=shiftdim(theta(1:end-1),-2) - pi/2;
                     R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[radius;0]);
                     v=reshape(R,[2,n]).'; v=[[v,zeros(n,1)];0,0,radius;0,0,-radius]; obj.Vertices=v;
                     for i=1:n
@@ -254,7 +254,7 @@ classdef Domain
                 elseif contains(lower(type),"prism")
                     n  = str2double(extract(lower(type),regexpPattern("\d+")));
                     theta=linspace(0,2*pi,n+1)+pi/n;
-                    theta=shiftdim(theta(1:end-1),-2);
+                    theta=shiftdim(theta(1:end-1),-2) - pi/2;
                     R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[sqrt(3)*radius/2;0]);
                     v=reshape(R,[2,n]).'; v=[[v,-radius/2*ones(n,1)];[v,radius/2*ones(n,1)]]; obj.Vertices=v;
                     for i=1:n
@@ -300,7 +300,7 @@ classdef Domain
                 elseif contains(lower(type),"pyramid")
                     n  = str2double(extract(lower(type),regexpPattern("\d+")));
                     theta=linspace(0,2*pi,n+1)+pi/n;
-                    theta=shiftdim(theta(1:end-1),-2);
+                    theta=shiftdim(theta(1:end-1),-2) - pi/2;
                     z = -1/n;
                     R=mult([cos(theta),-sin(theta);sin(theta),cos(theta)],[radius*sqrt(1-z^2);0]);
                     v=reshape(R,[2,n]).'; v=[[v,z*ones(n,1)];[0,0,1]]; obj.Vertices=v;

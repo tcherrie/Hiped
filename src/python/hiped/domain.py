@@ -139,7 +139,7 @@ class Domain:
         # 2D domain (regular polygon)
             elif isinstance(domain_type, (int, float)) and domain_type > 2:
                 theta = np.linspace(0, 2 * np.pi, int(domain_type) + 1) + (2 * np.pi) / (2 * domain_type)
-                theta = theta[:-1]
+                theta = theta[:-1] - np.pi/2
                 R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), np.array([[1], [0]]))
                 self.Vertices = R.reshape(2, domain_type).T
                 self.Dimension = 2
@@ -150,7 +150,7 @@ class Domain:
                 self.Type = "Tetraedron"
                 self.Dimension  = 3
                 theta = np.linspace(0, 2 * np.pi, 3 + 1) + (2 * np.pi) / (2 * 3)
-                theta = theta[:-1]
+                theta = theta[:-1] - np.pi/2
                 h = 1/3 * radius
                 R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), np.array([[radius * 2 * np.sqrt(2) / 3], [0]]))
                 v1 = R.reshape(2, 3).T
@@ -223,7 +223,7 @@ class Domain:
                 n = int(''.join(filter(str.isdigit, domain_type)))
                 self.Type = "Diamond"+str(n)
                 theta = np.linspace(0, 2 * np.pi, n + 1) + np.pi / n
-                theta = theta[:-1]
+                theta = theta[:-1] - np.pi/2
                 
                 R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), np.array([[radius], [0]]))
                 v = R.reshape(2, n).T
@@ -284,7 +284,7 @@ class Domain:
                 self.Type = "Prism"+str(n)
 
                 theta = np.linspace(0, 2 * np.pi, n + 1) + np.pi / n
-                theta = theta[:-1]
+                theta = theta[:-1] - np.pi/2
                 
                 R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), np.array([[radius], [0]]))
                 v = R.reshape(2, n).T
@@ -340,7 +340,7 @@ class Domain:
                 self.Type = "Pyramid"+str(n)
 
                 theta = np.linspace(0, 2 * np.pi, n + 1) + np.pi / n
-                theta = theta[:-1]
+                theta = theta[:-1] - np.pi/2
                 z = -1/n
                 R = mult(np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]), 
                          np.array([[radius*np.sqrt(1-z**2)], [0]]))

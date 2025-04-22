@@ -140,7 +140,13 @@ class Domain:
                 self.Vertices = R.reshape(2, domain_type).T
                 self.Dimension = 2
                 self.Type = "RegularPolygon"
-                
+
+        # 2D domain (custom polygon)
+            elif isinstance(domain_type, np.ndarray) and domain_type.shape[1] == 2:
+                self.Vertices = domain_type - np.mean(domain_type, axis=0)
+                self.Dimension = 2
+                self.Type = "Polygon"
+
         # 3D domain (tetraedron, cube, diamond and prism)
             elif isinstance(domain_type, str) and domain_type.lower() in ["tetra", "tetraedron"]:
                 self.Type = "Tetraedron"

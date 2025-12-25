@@ -37,7 +37,7 @@ for i=1:numel(legend)
             n = str2double(c(s:e));
             color(i,:) = cmap(mod(n-1,nColor)+1,:);
         else
-            warning(strcat(l," label color unknown, default color."))
+            color(i,:) = cmap(mod(sum(double(c(end-1:end)))-1,nColor)+1,:);
         end
     else
         warning(strcat(l," label color unknown, default color."))

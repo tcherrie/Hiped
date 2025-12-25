@@ -58,7 +58,7 @@ classdef VertexFunction
             obj.Derivative = derivative;
             if nargin>=3; obj.Label = label; end
             if nargin>=4
-                assert(isa(dimInput,"numeric"),"dimInput should be an integer >= 1");
+                assert(isa(dimInput,"numeric"),"dimInput should be an integer >= 0");
                 obj.DimInput = dimInput;
             end
             if nargin>=5
@@ -68,11 +68,25 @@ classdef VertexFunction
         end
 
         function result = eval(obj,x)
-            result = obj.Expression(x);
+            if obj.DimInput>=1; result = obj.Expression(x);
+            else  % in case of a constant (dimInput = 0)
+                result = obj.Expression(); % assume it returns an array of size [dimOutput, 1]
+                if nargin>=2 && ~ isempty(x)  % for brodcasting
+                    szx = size(x);
+                    result = result.*ones([1,szx(2:end)]); 
+                end
+            end
         end
 
         function result = evald(obj,x)
-            result = obj.Derivative(x);
+            if obj.DimInput>=1; result = obj.Derivative(x);
+            else  % in case of a constant (dimInput = 0)
+                result = zeros(obj.DimOutput,1);
+                if nargin>=2 && ~ isempty(x)  % for brodcasting
+                    szx = size(x);
+                    result = result.*ones([1,szx(2:end)]);
+                end
+            end
         end
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

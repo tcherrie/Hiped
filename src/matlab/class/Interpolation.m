@@ -80,18 +80,18 @@ classdef Interpolation
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %% Initialize variables
 
-        function x0 = initializeVariable(obj,n,type,radius,x0)
+        function x0 = initializeVariable(obj,n,type,coeff,x0)
             % x0 = initializeVariable(obj,n,type,radius)
             %
             % - n = number of variables
-            % - type = "rand" or "zero" 
+            % - type = "rand", "zero" or "coeff"
             % - coeff = number
             %
             % returns a structure with a labeling corresponding to the
             % Interpolation obj, containing n points at the origin or
             % randomly distributed in a certain radius
 
-            if nargin<=3 || isempty(radius); radius = 1; end
+            if nargin<=3 || isempty(coeff); coeff = 1; end
             if nargin<=4 || isempty(x0); x0 = struct(); end
             assert(~isfield(x0,obj.Label),"Non-unique labelisation of the interpolation nodes")
             dim = obj.ShapeFunction.Domain.Dimension;
@@ -99,7 +99,14 @@ classdef Interpolation
                 x0.(obj.Label) = zeros(n,dim);
                 for i=1:numel(obj.Children)
                     if class(obj.Children(i)) == "Interpolation"
-                        x0 = obj.Children(i).initializeVariable(n,type,radius,x0);
+                        x0 = obj.Children(i).initializeVariable(n,type,coeff,x0);
+                    end
+                end
+            elseif lower(type) == "coeff" || lower(type) == "const" || lower(type) == "constant"
+                x0.(obj.Label) = ones(n,dim).*coeff;
+                for i=1:numel(obj.Children)
+                    if class(obj.Children(i)) == "Interpolation"
+                        x0 = obj.Children(i).initializeVariable(n,type,coeff,x0);
                     end
                 end
             elseif  lower(type) == "rand" || lower(type) == "random"
@@ -107,14 +114,14 @@ classdef Interpolation
                     case 0
                         x0.(obj.Label) = zeros(n,dim);
                     case 1
-                        x0.(obj.Label) = radius*(rand(n,dim)-0.5);
+                        x0.(obj.Label) = coeff*(rand(n,dim)-0.5);
                     case 2
-                        R = radius*rand(n,1);
+                        R = coeff*rand(n,1);
                         th = rand(n,1)*2*pi;
                         [x,y] = pol2cart(th,R);
                         x0.(obj.Label) = [x,y];
                     case 3
-                        R = radius*rand(n,1);
+                        R = coeff*rand(n,1);
                         th = rand(n,1)*pi;
                         phi = rand(n,1)*2*pi;
                         [x,y,z] =  sph2cart(th,phi,R);
@@ -122,7 +129,7 @@ classdef Interpolation
                 end
                 for i=1:numel(obj.Children)
                     if class(obj.Children(i)) == "Interpolation"
-                        x0 = obj.Children(i).initializeVariable(n,type,radius,x0);
+                        x0 = obj.Children(i).initializeVariable(n,type,coeff,x0);
                     end
                 end
             end
@@ -178,7 +185,7 @@ classdef Interpolation
             coeff=zeros(obj.Children(1).DimOutput,1, sz,nChildren);
             if class(obj.Children)=="VertexFunction"
                 for i=1:nChildren
-                    coeff(:,:,:,i)=obj.Children(i).Expression(a);
+                    coeff(:,:,:,i)=obj.Children(i).eval(a);
                 end
             else
                 for i=1:nChildren
@@ -197,7 +204,7 @@ classdef Interpolation
         end
 
         function result = evalda(obj,x,a,w)
-            % result = eval(obj,x,field)
+            % result = evalda(obj,x,field)
             %
             %evaluate the derivative of the interpolation at points x, 
             % for a given VertexFunction field a, w.r.t a
